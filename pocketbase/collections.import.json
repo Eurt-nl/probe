@@ -1,509 +1,747 @@
-{
-  "collections": [
-    {
-      "id": "prbgame00000001",
-      "name": "probe_games",
-      "type": "base",
-      "system": false,
-      "listRule": "@request.auth.id != '' && (owner = @request.auth.id || probe_players_via_game.player ?= @request.auth.id)",
-      "viewRule": "@request.auth.id != '' && (owner = @request.auth.id || probe_players_via_game.player ?= @request.auth.id)",
-      "createRule": "@request.auth.id != '' && owner = @request.auth.id",
-      "updateRule": "@request.auth.id != '' && (owner = @request.auth.id || turn_player = @request.auth.id)",
-      "deleteRule": "@request.auth.id != '' && owner = @request.auth.id",
-      "fields": [
-        {
-          "name": "status",
-          "type": "select",
-          "required": true,
-          "maxSelect": 1,
-          "values": ["lobby", "active", "finished"]
-        },
-        {
-          "name": "owner",
-          "type": "relation",
-          "required": true,
-          "collectionId": "_pb_users_auth_",
-          "maxSelect": 1,
-          "cascadeDelete": false
-        },
-        {
-          "name": "turn_player",
-          "type": "relation",
-          "required": false,
-          "collectionId": "_pb_users_auth_",
-          "maxSelect": 1,
-          "cascadeDelete": false
-        },
-        {
-          "name": "max_players",
-          "type": "number",
-          "required": true,
-          "min": 2,
-          "max": 4,
-          "onlyInt": true
-        },
-        {
-          "name": "rule_mode",
-          "type": "select",
-          "required": true,
-          "maxSelect": 1,
-          "values": ["classic", "two_player", "progressive"]
-        },
-        {
-          "name": "seed",
-          "type": "text",
-          "required": false,
-          "min": 0,
-          "max": 128,
-          "pattern": ""
-        },
-        {
-          "name": "ended_at",
-          "type": "date",
-          "required": false,
-          "min": "",
-          "max": ""
-        }
-      ],
-      "indexes": [
-        "CREATE INDEX idx_probe_games_status ON probe_games (status)",
-        "CREATE INDEX idx_probe_games_turn_player ON probe_games (turn_player)",
-        "CREATE INDEX idx_probe_games_owner ON probe_games (owner)"
-      ]
-    },
-    {
-      "id": "prbplay00000001",
-      "name": "probe_players",
-      "type": "base",
-      "system": false,
-      "listRule": "@request.auth.id != '' && game.probe_players_via_game.player ?= @request.auth.id",
-      "viewRule": "@request.auth.id != '' && game.probe_players_via_game.player ?= @request.auth.id",
-      "createRule": "@request.auth.id != '' && player = @request.auth.id",
-      "updateRule": "@request.auth.id != '' && (player = @request.auth.id || game.turn_player = @request.auth.id)",
-      "deleteRule": "@request.auth.id != '' && game.owner = @request.auth.id && game.status = 'lobby'",
-      "fields": [
-        {
-          "name": "game",
-          "type": "relation",
-          "required": true,
-          "collectionId": "prbgame00000001",
-          "maxSelect": 1,
-          "cascadeDelete": true
-        },
-        {
-          "name": "player",
-          "type": "relation",
-          "required": true,
-          "collectionId": "_pb_users_auth_",
-          "maxSelect": 1,
-          "cascadeDelete": false
-        },
-        {
-          "name": "seat_index",
-          "type": "number",
-          "required": true,
-          "min": 0,
-          "max": 3,
-          "onlyInt": true
-        },
-        {
-          "name": "score",
-          "type": "number",
-          "required": true,
-          "min": -100000,
-          "max": 100000,
-          "onlyInt": true
-        },
-        {
-          "name": "secret_word_hash",
-          "type": "text",
-          "required": true,
-          "min": 16,
-          "max": 255,
-          "pattern": ""
-        },
-        {
-          "name": "secret_length",
-          "type": "number",
-          "required": true,
-          "min": 1,
-          "max": 12,
-          "onlyInt": true
-        },
-        {
-          "name": "dot_count",
-          "type": "number",
-          "required": true,
-          "min": 0,
-          "max": 5,
-          "onlyInt": true
-        },
-        {
-          "name": "revealed_mask",
-          "type": "json",
-          "required": true,
-          "maxSize": 2000
-        },
-        {
-          "name": "is_word_revealed",
-          "type": "bool",
-          "required": true
-        },
-        {
-          "name": "misspelled",
-          "type": "bool",
-          "required": true
-        }
-      ],
-      "indexes": [
-        "CREATE UNIQUE INDEX idx_probe_players_game_player ON probe_players (game, player)",
-        "CREATE UNIQUE INDEX idx_probe_players_game_seat ON probe_players (game, seat_index)",
-        "CREATE INDEX idx_probe_players_score ON probe_players (score)"
-      ]
-    },
-    {
-      "id": "prbcard00000001",
-      "name": "probe_activity_cards",
-      "type": "base",
-      "system": false,
-      "listRule": "@request.auth.id != ''",
-      "viewRule": "@request.auth.id != ''",
-      "createRule": null,
-      "updateRule": null,
-      "deleteRule": null,
-      "fields": [
-        {
-          "name": "code",
-          "type": "text",
-          "required": true,
-          "min": 2,
-          "max": 64,
-          "pattern": "^[A-Z0-9_]+$"
-        },
-        {
-          "name": "label",
-          "type": "text",
-          "required": true,
-          "min": 2,
-          "max": 160,
-          "pattern": ""
-        },
-        {
-          "name": "type",
-          "type": "select",
-          "required": true,
-          "maxSelect": 1,
-          "values": [
-            "NORMAL_TURN",
-            "ADDITIONAL_TURN",
-            "LEFT_EXPOSES",
-            "RIGHT_EXPOSES",
-            "EXPOSE_OWN_DOT",
-            "MULTIPLY_FIRST_GUESS",
-            "ADD_SCORE",
-            "DEDUCT_SCORE"
-          ]
-        },
-        {
-          "name": "value",
-          "type": "number",
-          "required": false,
-          "min": -999,
-          "max": 999,
-          "onlyInt": true
-        },
-        {
-          "name": "enabled",
-          "type": "bool",
-          "required": true
-        }
-      ],
-      "indexes": [
-        "CREATE UNIQUE INDEX idx_probe_activity_cards_code ON probe_activity_cards (code)",
-        "CREATE INDEX idx_probe_activity_cards_enabled ON probe_activity_cards (enabled)"
-      ]
-    },
-    {
-      "id": "prbturn00000001",
-      "name": "probe_turns",
-      "type": "base",
-      "system": false,
-      "listRule": "@request.auth.id != '' && game.probe_players_via_game.player ?= @request.auth.id",
-      "viewRule": "@request.auth.id != '' && game.probe_players_via_game.player ?= @request.auth.id",
-      "createRule": "@request.auth.id != '' && game.turn_player = @request.auth.id",
-      "updateRule": "@request.auth.id != '' && game.turn_player = @request.auth.id",
-      "deleteRule": null,
-      "fields": [
-        {
-          "name": "game",
-          "type": "relation",
-          "required": true,
-          "collectionId": "prbgame00000001",
-          "maxSelect": 1,
-          "cascadeDelete": true
-        },
-        {
-          "name": "player",
-          "type": "relation",
-          "required": true,
-          "collectionId": "_pb_users_auth_",
-          "maxSelect": 1,
-          "cascadeDelete": false
-        },
-        {
-          "name": "turn_index",
-          "type": "number",
-          "required": true,
-          "min": 0,
-          "max": 9999,
-          "onlyInt": true
-        },
-        {
-          "name": "activity_card",
-          "type": "relation",
-          "required": false,
-          "collectionId": "prbcard00000001",
-          "maxSelect": 1,
-          "cascadeDelete": false
-        },
-        {
-          "name": "multiplier",
-          "type": "number",
-          "required": true,
-          "min": 1,
-          "max": 9,
-          "onlyInt": true
-        },
-        {
-          "name": "status",
-          "type": "select",
-          "required": true,
-          "maxSelect": 1,
-          "values": ["active", "ended"]
-        }
-      ],
-      "indexes": [
-        "CREATE UNIQUE INDEX idx_probe_turns_game_turnindex ON probe_turns (game, turn_index)",
-        "CREATE INDEX idx_probe_turns_player ON probe_turns (player)"
-      ]
-    },
-    {
-      "id": "prbgues00000001",
-      "name": "probe_guesses",
-      "type": "base",
-      "system": false,
-      "listRule": "@request.auth.id != '' && game.probe_players_via_game.player ?= @request.auth.id",
-      "viewRule": "@request.auth.id != '' && game.probe_players_via_game.player ?= @request.auth.id",
-      "createRule": "@request.auth.id != '' && actor = @request.auth.id && game.turn_player = @request.auth.id",
-      "updateRule": null,
-      "deleteRule": null,
-      "fields": [
-        {
-          "name": "game",
-          "type": "relation",
-          "required": true,
-          "collectionId": "prbgame00000001",
-          "maxSelect": 1,
-          "cascadeDelete": true
-        },
-        {
-          "name": "turn",
-          "type": "relation",
-          "required": false,
-          "collectionId": "prbturn00000001",
-          "maxSelect": 1,
-          "cascadeDelete": false
-        },
-        {
-          "name": "actor",
-          "type": "relation",
-          "required": true,
-          "collectionId": "_pb_users_auth_",
-          "maxSelect": 1,
-          "cascadeDelete": false
-        },
-        {
-          "name": "target_player",
-          "type": "relation",
-          "required": true,
-          "collectionId": "_pb_users_auth_",
-          "maxSelect": 1,
-          "cascadeDelete": false
-        },
-        {
-          "name": "guess_char",
-          "type": "text",
-          "required": false,
-          "min": 0,
-          "max": 1,
-          "pattern": ""
-        },
-        {
-          "name": "guess_word",
-          "type": "text",
-          "required": false,
-          "min": 0,
-          "max": 12,
-          "pattern": ""
-        },
-        {
-          "name": "is_interruptive",
-          "type": "bool",
-          "required": true
-        },
-        {
-          "name": "success",
-          "type": "bool",
-          "required": true
-        },
-        {
-          "name": "points_delta",
-          "type": "number",
-          "required": true,
-          "min": -500,
-          "max": 500,
-          "onlyInt": true
-        },
-        {
-          "name": "reason",
-          "type": "text",
-          "required": false,
-          "min": 0,
-          "max": 200,
-          "pattern": ""
-        }
-      ],
-      "indexes": [
-        "CREATE INDEX idx_probe_guesses_game_created ON probe_guesses (game, created)",
-        "CREATE INDEX idx_probe_guesses_actor_created ON probe_guesses (actor, created)",
-        "CREATE INDEX idx_probe_guesses_target_created ON probe_guesses (target_player, created)"
-      ]
-    },
-    {
-      "id": "inappnt00000001",
-      "name": "in_app_notifications",
-      "type": "base",
-      "system": false,
-      "listRule": "@request.auth.id = user",
-      "viewRule": "@request.auth.id = user",
-      "createRule": null,
-      "updateRule": "@request.auth.id = user",
-      "deleteRule": "@request.auth.id = user",
-      "fields": [
-        {
-          "name": "user",
-          "type": "relation",
-          "required": true,
-          "collectionId": "_pb_users_auth_",
-          "maxSelect": 1,
-          "cascadeDelete": true
-        },
-        {
-          "name": "game",
-          "type": "relation",
-          "required": false,
-          "collectionId": "prbgame00000001",
-          "maxSelect": 1,
-          "cascadeDelete": true
-        },
-        {
-          "name": "type",
-          "type": "select",
-          "required": true,
-          "maxSelect": 1,
-          "values": ["turn_start", "game_update", "system"]
-        },
-        {
-          "name": "title",
-          "type": "text",
-          "required": true,
-          "min": 2,
-          "max": 120,
-          "pattern": ""
-        },
-        {
-          "name": "body",
-          "type": "text",
-          "required": true,
-          "min": 1,
-          "max": 500,
-          "pattern": ""
-        },
-        {
-          "name": "is_read",
-          "type": "bool",
-          "required": true
-        },
-        {
-          "name": "sent_via_ntfy",
-          "type": "bool",
-          "required": true
-        },
-        {
-          "name": "ntfy_topic",
-          "type": "text",
-          "required": false,
-          "min": 0,
-          "max": 120,
-          "pattern": ""
-        }
-      ],
-      "indexes": [
-        "CREATE INDEX idx_inapp_user_read_created ON in_app_notifications (user, is_read, created)",
-        "CREATE INDEX idx_inapp_game_created ON in_app_notifications (game, created)"
-      ]
-    },
-    {
-      "id": "appvers00000001",
-      "name": "app_versions",
-      "type": "base",
-      "system": false,
-      "listRule": "@request.auth.id != ''",
-      "viewRule": "@request.auth.id != ''",
-      "createRule": null,
-      "updateRule": null,
-      "deleteRule": null,
-      "fields": [
-        {
-          "name": "version",
-          "type": "text",
-          "required": true,
-          "min": 1,
-          "max": 30,
-          "pattern": ""
-        },
-        {
-          "name": "build_date",
-          "type": "date",
-          "required": true,
-          "min": "",
-          "max": ""
-        },
-        {
-          "name": "min_supported_version",
-          "type": "text",
-          "required": false,
-          "min": 0,
-          "max": 30,
-          "pattern": ""
-        },
-        {
-          "name": "release_notes",
-          "type": "editor",
-          "required": false,
-          "convertURLs": false
-        },
-        {
-          "name": "is_latest",
-          "type": "bool",
-          "required": true
-        }
-      ],
-      "indexes": [
-        "CREATE UNIQUE INDEX idx_app_versions_version ON app_versions (version)",
-        "CREATE INDEX idx_app_versions_is_latest ON app_versions (is_latest)"
-      ]
-    }
-  ],
-  "deleteMissing": false
-}
+[
+  {
+    "id": "pbc_1000000001",
+    "listRule": "@request.auth.id != '' && (owner = @request.auth.id || probe_players_via_game.player ?= @request.auth.id)",
+    "viewRule": "@request.auth.id != '' && (owner = @request.auth.id || probe_players_via_game.player ?= @request.auth.id)",
+    "createRule": "@request.auth.id != '' && owner = @request.auth.id",
+    "updateRule": "@request.auth.id != '' && (owner = @request.auth.id || turn_player = @request.auth.id)",
+    "deleteRule": "@request.auth.id != '' && owner = @request.auth.id",
+    "name": "probe_games",
+    "type": "base",
+    "fields": [
+      {
+        "id": "select10000001",
+        "name": "status",
+        "type": "select",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "maxSelect": 1,
+        "values": ["lobby", "active", "finished"]
+      },
+      {
+        "id": "relation100001",
+        "name": "owner",
+        "type": "relation",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "collectionId": "_pb_users_auth_",
+        "cascadeDelete": false,
+        "minSelect": 0,
+        "maxSelect": 1
+      },
+      {
+        "id": "relation100002",
+        "name": "turn_player",
+        "type": "relation",
+        "required": false,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "collectionId": "_pb_users_auth_",
+        "cascadeDelete": false,
+        "minSelect": 0,
+        "maxSelect": 1
+      },
+      {
+        "id": "number1000001",
+        "name": "max_players",
+        "type": "number",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "min": 2,
+        "max": 4,
+        "onlyInt": true
+      },
+      {
+        "id": "select10000002",
+        "name": "rule_mode",
+        "type": "select",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "maxSelect": 1,
+        "values": ["classic", "two_player", "progressive"]
+      },
+      {
+        "id": "text100000001",
+        "name": "seed",
+        "type": "text",
+        "required": false,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "min": 0,
+        "max": 128,
+        "pattern": "",
+        "autogeneratePattern": "",
+        "primaryKey": false
+      },
+      {
+        "id": "date100000001",
+        "name": "ended_at",
+        "type": "date",
+        "required": false,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "min": "",
+        "max": ""
+      }
+    ],
+    "indexes": [
+      "CREATE INDEX idx_probe_games_status ON probe_games (status)",
+      "CREATE INDEX idx_probe_games_turn_player ON probe_games (turn_player)",
+      "CREATE INDEX idx_probe_games_owner ON probe_games (owner)"
+    ],
+    "system": false
+  },
+  {
+    "id": "pbc_1000000002",
+    "listRule": "@request.auth.id != '' && game.probe_players_via_game.player ?= @request.auth.id",
+    "viewRule": "@request.auth.id != '' && game.probe_players_via_game.player ?= @request.auth.id",
+    "createRule": "@request.auth.id != '' && player = @request.auth.id",
+    "updateRule": "@request.auth.id != '' && (player = @request.auth.id || game.turn_player = @request.auth.id)",
+    "deleteRule": "@request.auth.id != '' && game.owner = @request.auth.id && game.status = 'lobby'",
+    "name": "probe_players",
+    "type": "base",
+    "fields": [
+      {
+        "id": "relation200001",
+        "name": "game",
+        "type": "relation",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "collectionId": "pbc_1000000001",
+        "cascadeDelete": true,
+        "minSelect": 0,
+        "maxSelect": 1
+      },
+      {
+        "id": "relation200002",
+        "name": "player",
+        "type": "relation",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "collectionId": "_pb_users_auth_",
+        "cascadeDelete": false,
+        "minSelect": 0,
+        "maxSelect": 1
+      },
+      {
+        "id": "number2000001",
+        "name": "seat_index",
+        "type": "number",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "min": 0,
+        "max": 3,
+        "onlyInt": true
+      },
+      {
+        "id": "number2000002",
+        "name": "score",
+        "type": "number",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "min": -100000,
+        "max": 100000,
+        "onlyInt": true
+      },
+      {
+        "id": "text200000001",
+        "name": "secret_word_hash",
+        "type": "text",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "min": 16,
+        "max": 255,
+        "pattern": "",
+        "autogeneratePattern": "",
+        "primaryKey": false
+      },
+      {
+        "id": "number2000003",
+        "name": "secret_length",
+        "type": "number",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "min": 1,
+        "max": 12,
+        "onlyInt": true
+      },
+      {
+        "id": "number2000004",
+        "name": "dot_count",
+        "type": "number",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "min": 0,
+        "max": 5,
+        "onlyInt": true
+      },
+      {
+        "id": "json200000001",
+        "name": "revealed_mask",
+        "type": "json",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "maxSize": 2000
+      },
+      {
+        "id": "bool200000001",
+        "name": "is_word_revealed",
+        "type": "bool",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false
+      },
+      {
+        "id": "bool200000002",
+        "name": "misspelled",
+        "type": "bool",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX idx_probe_players_game_player ON probe_players (game, player)",
+      "CREATE UNIQUE INDEX idx_probe_players_game_seat ON probe_players (game, seat_index)",
+      "CREATE INDEX idx_probe_players_score ON probe_players (score)"
+    ],
+    "system": false
+  },
+  {
+    "id": "pbc_1000000003",
+    "listRule": "@request.auth.id != ''",
+    "viewRule": "@request.auth.id != ''",
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null,
+    "name": "probe_activity_cards",
+    "type": "base",
+    "fields": [
+      {
+        "id": "text300000001",
+        "name": "code",
+        "type": "text",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "min": 2,
+        "max": 64,
+        "pattern": "^[A-Z0-9_]+$",
+        "autogeneratePattern": "",
+        "primaryKey": false
+      },
+      {
+        "id": "text300000002",
+        "name": "label",
+        "type": "text",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "min": 2,
+        "max": 160,
+        "pattern": "",
+        "autogeneratePattern": "",
+        "primaryKey": false
+      },
+      {
+        "id": "select30000001",
+        "name": "type",
+        "type": "select",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "maxSelect": 1,
+        "values": [
+          "NORMAL_TURN",
+          "ADDITIONAL_TURN",
+          "LEFT_EXPOSES",
+          "RIGHT_EXPOSES",
+          "EXPOSE_OWN_DOT",
+          "MULTIPLY_FIRST_GUESS",
+          "ADD_SCORE",
+          "DEDUCT_SCORE"
+        ]
+      },
+      {
+        "id": "number3000001",
+        "name": "value",
+        "type": "number",
+        "required": false,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "min": -999,
+        "max": 999,
+        "onlyInt": true
+      },
+      {
+        "id": "bool300000001",
+        "name": "enabled",
+        "type": "bool",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX idx_probe_activity_cards_code ON probe_activity_cards (code)",
+      "CREATE INDEX idx_probe_activity_cards_enabled ON probe_activity_cards (enabled)"
+    ],
+    "system": false
+  },
+  {
+    "id": "pbc_1000000004",
+    "listRule": "@request.auth.id != '' && game.probe_players_via_game.player ?= @request.auth.id",
+    "viewRule": "@request.auth.id != '' && game.probe_players_via_game.player ?= @request.auth.id",
+    "createRule": "@request.auth.id != '' && game.turn_player = @request.auth.id",
+    "updateRule": "@request.auth.id != '' && game.turn_player = @request.auth.id",
+    "deleteRule": null,
+    "name": "probe_turns",
+    "type": "base",
+    "fields": [
+      {
+        "id": "relation400001",
+        "name": "game",
+        "type": "relation",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "collectionId": "pbc_1000000001",
+        "cascadeDelete": true,
+        "minSelect": 0,
+        "maxSelect": 1
+      },
+      {
+        "id": "relation400002",
+        "name": "player",
+        "type": "relation",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "collectionId": "_pb_users_auth_",
+        "cascadeDelete": false,
+        "minSelect": 0,
+        "maxSelect": 1
+      },
+      {
+        "id": "number4000001",
+        "name": "turn_index",
+        "type": "number",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "min": 0,
+        "max": 9999,
+        "onlyInt": true
+      },
+      {
+        "id": "relation400003",
+        "name": "activity_card",
+        "type": "relation",
+        "required": false,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "collectionId": "pbc_1000000003",
+        "cascadeDelete": false,
+        "minSelect": 0,
+        "maxSelect": 1
+      },
+      {
+        "id": "number4000002",
+        "name": "multiplier",
+        "type": "number",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "min": 1,
+        "max": 9,
+        "onlyInt": true
+      },
+      {
+        "id": "select40000001",
+        "name": "status",
+        "type": "select",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "maxSelect": 1,
+        "values": ["active", "ended"]
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX idx_probe_turns_game_turnindex ON probe_turns (game, turn_index)",
+      "CREATE INDEX idx_probe_turns_player ON probe_turns (player)"
+    ],
+    "system": false
+  },
+  {
+    "id": "pbc_1000000005",
+    "listRule": "@request.auth.id != '' && game.probe_players_via_game.player ?= @request.auth.id",
+    "viewRule": "@request.auth.id != '' && game.probe_players_via_game.player ?= @request.auth.id",
+    "createRule": "@request.auth.id != '' && actor = @request.auth.id && game.turn_player = @request.auth.id",
+    "updateRule": null,
+    "deleteRule": null,
+    "name": "probe_guesses",
+    "type": "base",
+    "fields": [
+      {
+        "id": "relation500001",
+        "name": "game",
+        "type": "relation",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "collectionId": "pbc_1000000001",
+        "cascadeDelete": true,
+        "minSelect": 0,
+        "maxSelect": 1
+      },
+      {
+        "id": "relation500002",
+        "name": "turn",
+        "type": "relation",
+        "required": false,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "collectionId": "pbc_1000000004",
+        "cascadeDelete": false,
+        "minSelect": 0,
+        "maxSelect": 1
+      },
+      {
+        "id": "relation500003",
+        "name": "actor",
+        "type": "relation",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "collectionId": "_pb_users_auth_",
+        "cascadeDelete": false,
+        "minSelect": 0,
+        "maxSelect": 1
+      },
+      {
+        "id": "relation500004",
+        "name": "target_player",
+        "type": "relation",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "collectionId": "_pb_users_auth_",
+        "cascadeDelete": false,
+        "minSelect": 0,
+        "maxSelect": 1
+      },
+      {
+        "id": "text500000001",
+        "name": "guess_char",
+        "type": "text",
+        "required": false,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "min": 0,
+        "max": 1,
+        "pattern": "",
+        "autogeneratePattern": "",
+        "primaryKey": false
+      },
+      {
+        "id": "text500000002",
+        "name": "guess_word",
+        "type": "text",
+        "required": false,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "min": 0,
+        "max": 12,
+        "pattern": "",
+        "autogeneratePattern": "",
+        "primaryKey": false
+      },
+      {
+        "id": "bool500000001",
+        "name": "is_interruptive",
+        "type": "bool",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false
+      },
+      {
+        "id": "bool500000002",
+        "name": "success",
+        "type": "bool",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false
+      },
+      {
+        "id": "number5000001",
+        "name": "points_delta",
+        "type": "number",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "min": -500,
+        "max": 500,
+        "onlyInt": true
+      },
+      {
+        "id": "text500000003",
+        "name": "reason",
+        "type": "text",
+        "required": false,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "min": 0,
+        "max": 200,
+        "pattern": "",
+        "autogeneratePattern": "",
+        "primaryKey": false
+      }
+    ],
+    "indexes": [
+      "CREATE INDEX idx_probe_guesses_game_created ON probe_guesses (game, created)",
+      "CREATE INDEX idx_probe_guesses_actor_created ON probe_guesses (actor, created)",
+      "CREATE INDEX idx_probe_guesses_target_created ON probe_guesses (target_player, created)"
+    ],
+    "system": false
+  },
+  {
+    "id": "pbc_1000000006",
+    "listRule": "@request.auth.id = user",
+    "viewRule": "@request.auth.id = user",
+    "createRule": null,
+    "updateRule": "@request.auth.id = user",
+    "deleteRule": "@request.auth.id = user",
+    "name": "in_app_notifications",
+    "type": "base",
+    "fields": [
+      {
+        "id": "relation600001",
+        "name": "user",
+        "type": "relation",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "collectionId": "_pb_users_auth_",
+        "cascadeDelete": true,
+        "minSelect": 0,
+        "maxSelect": 1
+      },
+      {
+        "id": "relation600002",
+        "name": "game",
+        "type": "relation",
+        "required": false,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "collectionId": "pbc_1000000001",
+        "cascadeDelete": true,
+        "minSelect": 0,
+        "maxSelect": 1
+      },
+      {
+        "id": "select60000001",
+        "name": "type",
+        "type": "select",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "maxSelect": 1,
+        "values": ["turn_start", "game_update", "system"]
+      },
+      {
+        "id": "text600000001",
+        "name": "title",
+        "type": "text",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "min": 2,
+        "max": 120,
+        "pattern": "",
+        "autogeneratePattern": "",
+        "primaryKey": false
+      },
+      {
+        "id": "text600000002",
+        "name": "body",
+        "type": "text",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "min": 1,
+        "max": 500,
+        "pattern": "",
+        "autogeneratePattern": "",
+        "primaryKey": false
+      },
+      {
+        "id": "bool600000001",
+        "name": "is_read",
+        "type": "bool",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false
+      },
+      {
+        "id": "bool600000002",
+        "name": "sent_via_ntfy",
+        "type": "bool",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false
+      },
+      {
+        "id": "text600000003",
+        "name": "ntfy_topic",
+        "type": "text",
+        "required": false,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "min": 0,
+        "max": 120,
+        "pattern": "",
+        "autogeneratePattern": "",
+        "primaryKey": false
+      }
+    ],
+    "indexes": [
+      "CREATE INDEX idx_inapp_user_read_created ON in_app_notifications (user, is_read, created)",
+      "CREATE INDEX idx_inapp_game_created ON in_app_notifications (game, created)"
+    ],
+    "system": false
+  },
+  {
+    "id": "pbc_1000000007",
+    "listRule": "@request.auth.id != ''",
+    "viewRule": "@request.auth.id != ''",
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null,
+    "name": "app_versions",
+    "type": "base",
+    "fields": [
+      {
+        "id": "text700000001",
+        "name": "version",
+        "type": "text",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "min": 1,
+        "max": 30,
+        "pattern": "",
+        "autogeneratePattern": "",
+        "primaryKey": false
+      },
+      {
+        "id": "date700000001",
+        "name": "build_date",
+        "type": "date",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "min": "",
+        "max": ""
+      },
+      {
+        "id": "text700000002",
+        "name": "min_supported_version",
+        "type": "text",
+        "required": false,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "min": 0,
+        "max": 30,
+        "pattern": "",
+        "autogeneratePattern": "",
+        "primaryKey": false
+      },
+      {
+        "id": "editor70000001",
+        "name": "release_notes",
+        "type": "editor",
+        "required": false,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "convertURLs": false
+      },
+      {
+        "id": "bool700000001",
+        "name": "is_latest",
+        "type": "bool",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX idx_app_versions_version ON app_versions (version)",
+      "CREATE INDEX idx_app_versions_is_latest ON app_versions (is_latest)"
+    ],
+    "system": false
+  }
+]
