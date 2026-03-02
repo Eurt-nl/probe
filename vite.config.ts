@@ -2,11 +2,17 @@ import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import { fileURLToPath, URL } from 'node:url';
 import { VitePWA } from 'vite-plugin-pwa';
+import { quasar, transformAssetUrls } from '@quasar/vite-plugin';
 import pkg from './package.json';
 
 export default defineConfig({
   plugins: [
-    vue(),
+    vue({
+      template: { transformAssetUrls }
+    }),
+    quasar({
+      autoImportComponentCase: 'kebab'
+    }),
     VitePWA({
       registerType: 'prompt',
       includeAssets: ['favicon.svg', 'robots.txt'],
