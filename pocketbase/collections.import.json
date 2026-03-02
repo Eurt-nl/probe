@@ -549,9 +549,9 @@
       }
     ],
     "indexes": [
-      "CREATE INDEX idx_probe_guesses_game_created ON probe_guesses (game, created)",
-      "CREATE INDEX idx_probe_guesses_actor_created ON probe_guesses (actor, created)",
-      "CREATE INDEX idx_probe_guesses_target_created ON probe_guesses (target_player, created)"
+      "CREATE INDEX idx_probe_guesses_game ON probe_guesses (game)",
+      "CREATE INDEX idx_probe_guesses_actor ON probe_guesses (actor)",
+      "CREATE INDEX idx_probe_guesses_target ON probe_guesses (target_player)"
     ],
     "system": false
   },
@@ -664,8 +664,8 @@
       }
     ],
     "indexes": [
-      "CREATE INDEX idx_inapp_user_read_created ON in_app_notifications (user, is_read, created)",
-      "CREATE INDEX idx_inapp_game_created ON in_app_notifications (game, created)"
+      "CREATE INDEX idx_inapp_user_read ON in_app_notifications (user, is_read)",
+      "CREATE INDEX idx_inapp_game ON in_app_notifications (game)"
     ],
     "system": false
   },
