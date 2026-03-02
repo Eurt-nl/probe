@@ -157,8 +157,12 @@ const remoteGameId = ref('');
 const localGame = computed(() => gameStore.game);
 
 function errorMessage(error: unknown): string {
-  const anyError = error as { response?: { message?: string }; message?: string };
-  return anyError?.response?.message ?? anyError?.message ?? String(error);
+  const anyError = error as {
+    response?: { message?: string; data?: Record<string, unknown> };
+    message?: string;
+  };
+  const details = anyError?.response?.data ? ` ${JSON.stringify(anyError.response.data)}` : '';
+  return `${anyError?.response?.message ?? anyError?.message ?? String(error)}${details}`;
 }
 
 async function login(): Promise<void> {

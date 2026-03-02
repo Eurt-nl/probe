@@ -60,7 +60,7 @@ Fields:
 
 - `game` (relation -> probe_games)
 - `player` (relation -> users)
-- `secret_word` (hidden text, `^[A-Z.]{1,12}$`)
+- `secret_word` (text, `^[A-Z.]{1,12}$`)
 
 Rules:
 
