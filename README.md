@@ -45,6 +45,14 @@ Override via env variables:
 ## PocketBase schema
 
 - See `docs/pocketbase-schema.md`.
+- Direct import JSON (zonder `users`): `pocketbase/collections.import.json`
+
+### PocketBase import
+
+1. Open PocketBase Admin UI.
+2. Go to `Settings` -> `Import collections`.
+3. Upload `pocketbase/collections.import.json`.
+4. Keep `users` as-is (this import only creates the non-user collections).
 
 ## Notifications
 
