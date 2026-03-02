@@ -156,12 +156,17 @@ const remoteGameId = ref('');
 
 const localGame = computed(() => gameStore.game);
 
+function errorMessage(error: unknown): string {
+  const anyError = error as { response?: { message?: string }; message?: string };
+  return anyError?.response?.message ?? anyError?.message ?? String(error);
+}
+
 async function login(): Promise<void> {
   try {
     await session.login({ email: authEmail.value.trim(), password: authPassword.value });
     $q.notify({ type: 'positive', message: 'Ingelogd' });
   } catch (error) {
-    $q.notify({ type: 'negative', message: `Login mislukt: ${String(error)}` });
+    $q.notify({ type: 'negative', message: `Login mislukt: ${errorMessage(error)}` });
   }
 }
 
@@ -174,7 +179,7 @@ async function register(): Promise<void> {
     });
     $q.notify({ type: 'positive', message: 'Account aangemaakt en ingelogd' });
   } catch (error) {
-    $q.notify({ type: 'negative', message: `Register mislukt: ${String(error)}` });
+    $q.notify({ type: 'negative', message: `Register mislukt: ${errorMessage(error)}` });
   }
 }
 
@@ -190,7 +195,7 @@ async function createRemote(): Promise<void> {
     remoteGameId.value = game.id;
     $q.notify({ type: 'positive', message: `Lobby aangemaakt: ${game.id}` });
   } catch (error) {
-    $q.notify({ type: 'negative', message: `Lobby aanmaken mislukt: ${String(error)}` });
+    $q.notify({ type: 'negative', message: `Lobby aanmaken mislukt: ${errorMessage(error)}` });
   }
 }
 
@@ -205,7 +210,7 @@ async function joinRemote(): Promise<void> {
     remoteGameId.value = joinGameId.value.trim();
     $q.notify({ type: 'positive', message: `Joined lobby: ${remoteGameId.value}` });
   } catch (error) {
-    $q.notify({ type: 'negative', message: `Join mislukt: ${String(error)}` });
+    $q.notify({ type: 'negative', message: `Join mislukt: ${errorMessage(error)}` });
   }
 }
 

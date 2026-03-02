@@ -89,54 +89,64 @@ export async function listRemotePlayers(gameId: string): Promise<RemotePlayer[]>
 }
 
 export async function joinRemoteGame(gameId: string, userId: string, secret: string): Promise<void> {
-  const players = await listRemotePlayers(gameId);
-  const existing = players.find((player) => player.player === userId);
-
   const normalizedSecret = normalizeSecret(secret);
   if (!normalizedSecret.length) {
     throw new Error('Geheim woord is leeg of ongeldig');
   }
 
-  if (existing) {
-    // User already joined; make sure secret exists/updates for hook-based validation.
-    const existingSecret = await pb.collection(collections.secretWords)
-      .getFirstListItem(`game = \"${gameId}\" && player = \"${userId}\"`)
-      .catch(() => null);
+  const dotCount = normalizedSecret.split('').filter((char) => char === '.').length;
+  const ownPlayerRecord = await pb
+    .collection(collections.players)
+    .getFirstListItem(`game = \"${gameId}\" && player = \"${userId}\"`)
+    .catch(() => null);
 
-    if (existingSecret) {
-      await pb.collection(collections.secretWords).update(existingSecret.id, {
-        secret_word: normalizedSecret
-      });
-    } else {
-      await pb.collection(collections.secretWords).create({
-        game: gameId,
-        player: userId,
-        secret_word: normalizedSecret
-      });
+  if (!ownPlayerRecord) {
+    let created = false;
+    for (let seat = 0; seat < 4; seat += 1) {
+      try {
+        await pb.collection(collections.players).create({
+          game: gameId,
+          player: userId,
+          seat_index: seat,
+          score: 0,
+          secret_word_hash: fakeHash(normalizedSecret),
+          secret_length: normalizedSecret.length,
+          dot_count: dotCount,
+          revealed_mask: Array.from({ length: normalizedSecret.length }, () => false),
+          is_word_revealed: false,
+          misspelled: false
+        });
+        created = true;
+        break;
+      } catch {
+        // Try the next seat index if this one is taken.
+      }
     }
+
+    if (!created) {
+      throw new Error('Geen vrije plek beschikbaar in deze lobby');
+    }
+  } else {
+    await pb.collection(collections.players).update(ownPlayerRecord.id, {
+      secret_word_hash: fakeHash(normalizedSecret),
+      secret_length: normalizedSecret.length,
+      dot_count: dotCount,
+      revealed_mask: Array.from({ length: normalizedSecret.length }, () => false),
+      is_word_revealed: false,
+      misspelled: false
+    });
+  }
+
+  const existingSecret = await pb.collection(collections.secretWords)
+    .getFirstListItem(`game = \"${gameId}\" && player = \"${userId}\"`)
+    .catch(() => null);
+
+  if (existingSecret) {
+    await pb.collection(collections.secretWords).update(existingSecret.id, {
+      secret_word: normalizedSecret
+    });
     return;
   }
-
-  const usedSeats = new Set(players.map((player) => player.seat_index));
-  let seat = 0;
-  while (usedSeats.has(seat) && seat < 4) {
-    seat += 1;
-  }
-
-  const dotCount = normalizedSecret.split('').filter((char) => char === '.').length;
-
-  await pb.collection(collections.players).create({
-    game: gameId,
-    player: userId,
-    seat_index: seat,
-    score: 0,
-    secret_word_hash: fakeHash(normalizedSecret),
-    secret_length: normalizedSecret.length,
-    dot_count: dotCount,
-    revealed_mask: Array.from({ length: normalizedSecret.length }, () => false),
-    is_word_revealed: false,
-    misspelled: false
-  });
 
   await pb.collection(collections.secretWords).create({
     game: gameId,
