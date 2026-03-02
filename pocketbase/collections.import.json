@@ -671,6 +671,62 @@
   },
   {
     "id": "pbc_1000000007",
+    "listRule": "@request.auth.id != '' && game.probe_players_via_game.player ?= @request.auth.id && player = @request.auth.id",
+    "viewRule": "@request.auth.id != '' && game.probe_players_via_game.player ?= @request.auth.id && player = @request.auth.id",
+    "createRule": "@request.auth.id != '' && player = @request.auth.id",
+    "updateRule": "@request.auth.id != '' && player = @request.auth.id && game.status = 'lobby'",
+    "deleteRule": "@request.auth.id != '' && player = @request.auth.id && game.status = 'lobby'",
+    "name": "probe_secret_words",
+    "type": "base",
+    "fields": [
+      {
+        "id": "relation700001",
+        "name": "game",
+        "type": "relation",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "collectionId": "pbc_1000000001",
+        "cascadeDelete": true,
+        "minSelect": 0,
+        "maxSelect": 1
+      },
+      {
+        "id": "relation700002",
+        "name": "player",
+        "type": "relation",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "collectionId": "_pb_users_auth_",
+        "cascadeDelete": true,
+        "minSelect": 0,
+        "maxSelect": 1
+      },
+      {
+        "id": "text700000001",
+        "name": "secret_word",
+        "type": "text",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": true,
+        "min": 1,
+        "max": 12,
+        "pattern": "^[A-Z.]{1,12}$",
+        "autogeneratePattern": "",
+        "primaryKey": false
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX idx_probe_secret_words_game_player ON probe_secret_words (game, player)"
+    ],
+    "system": false
+  },
+  {
+    "id": "pbc_1000000008",
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
     "createRule": null,
@@ -680,7 +736,7 @@
     "type": "base",
     "fields": [
       {
-        "id": "text700000001",
+        "id": "text800000001",
         "name": "version",
         "type": "text",
         "required": true,
@@ -694,7 +750,7 @@
         "primaryKey": false
       },
       {
-        "id": "date700000001",
+        "id": "date800000001",
         "name": "build_date",
         "type": "date",
         "required": true,
@@ -705,7 +761,7 @@
         "max": ""
       },
       {
-        "id": "text700000002",
+        "id": "text800000002",
         "name": "min_supported_version",
         "type": "text",
         "required": false,
@@ -719,7 +775,7 @@
         "primaryKey": false
       },
       {
-        "id": "editor70000001",
+        "id": "editor80000001",
         "name": "release_notes",
         "type": "editor",
         "required": false,
@@ -729,7 +785,7 @@
         "convertURLs": false
       },
       {
-        "id": "bool700000001",
+        "id": "bool800000001",
         "name": "is_latest",
         "type": "bool",
         "required": true,

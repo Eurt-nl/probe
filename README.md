@@ -53,6 +53,7 @@ Override via env variables:
 2. Go to `Settings` -> `Import collections`.
 3. Upload `pocketbase/collections.import.json`.
 4. Keep `users` as-is (this import only creates the non-user collections).
+5. If you imported an older version earlier, re-import this file so `probe_secret_words` is added.
 
 ## Notifications
 
@@ -82,3 +83,23 @@ Seed source file:
   - `probe_games`
   - `probe_players`
   - `probe_guesses`
+- Guesses are submitted as pending events and validated server-side by the referee worker.
+
+## Server-side referee worker
+
+Run this process on a server/VPS/container so remote games are validated automatically:
+
+```bash
+PB_URL=https://pb.9621da15.cloud \
+PB_ADMIN_EMAIL=you@example.com \
+PB_ADMIN_PASSWORD=your_password \
+npm run referee:remote
+```
+
+What it does:
+
+- validates each incoming guess against `probe_secret_words`
+- updates score and revealed mask in `probe_players`
+- handles dot penalty and turn advance on misses
+- marks game as finished when all words are revealed
+- writes in-app notifications for key events

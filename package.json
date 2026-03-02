@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
-    "seed:cards": "node scripts/seed-activity-cards.mjs"
+    "seed:cards": "node scripts/seed-activity-cards.mjs",
+    "referee:remote": "node scripts/remote-referee.mjs"
   },
   "dependencies": {
     "@quasar/extras": "^1.16.16",

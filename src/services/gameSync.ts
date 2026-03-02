@@ -17,6 +17,7 @@ export interface RemotePlayer {
   score: number;
   secret_length: number;
   dot_count: number;
+  hidden_count: number;
   is_word_revealed: boolean;
   display_name: string;
 }
@@ -35,8 +36,19 @@ export interface RemoteGuess {
 }
 
 function fakeHash(secret: string): string {
-  // Placeholder hash so schema constraints are met; replace with server-side hashing hook in production.
+  // Placeholder hash so schema constraints are met; authoritative validation happens in backend hooks.
   return btoa(unescape(encodeURIComponent(secret))).padEnd(16, 'x').slice(0, 64);
+}
+
+function normalizeSecret(secret: string): string {
+  return secret.trim().toUpperCase().replace(/[^A-Z.]/g, '').slice(0, 12);
+}
+
+function hiddenCountFromMask(mask: unknown, fallbackLength: number): number {
+  if (Array.isArray(mask)) {
+    return mask.filter((item) => item === false).length;
+  }
+  return fallbackLength;
 }
 
 export async function createRemoteGame(ownerUserId: string, mode: RemoteGame['rule_mode'] = 'classic'): Promise<RemoteGame> {
@@ -70,6 +82,7 @@ export async function listRemotePlayers(gameId: string): Promise<RemotePlayer[]>
     score: Number(record.score ?? 0),
     secret_length: Number(record.secret_length ?? 0),
     dot_count: Number(record.dot_count ?? 0),
+    hidden_count: hiddenCountFromMask(record.revealed_mask, Number(record.secret_length ?? 0)),
     is_word_revealed: Boolean(record.is_word_revealed),
     display_name: String(record.expand?.player?.display_name ?? record.expand?.player?.name ?? record.player)
   }));
@@ -78,7 +91,29 @@ export async function listRemotePlayers(gameId: string): Promise<RemotePlayer[]>
 export async function joinRemoteGame(gameId: string, userId: string, secret: string): Promise<void> {
   const players = await listRemotePlayers(gameId);
   const existing = players.find((player) => player.player === userId);
+
+  const normalizedSecret = normalizeSecret(secret);
+  if (!normalizedSecret.length) {
+    throw new Error('Geheim woord is leeg of ongeldig');
+  }
+
   if (existing) {
+    // User already joined; make sure secret exists/updates for hook-based validation.
+    const existingSecret = await pb.collection(collections.secretWords)
+      .getFirstListItem(`game = \"${gameId}\" && player = \"${userId}\"`)
+      .catch(() => null);
+
+    if (existingSecret) {
+      await pb.collection(collections.secretWords).update(existingSecret.id, {
+        secret_word: normalizedSecret
+      });
+    } else {
+      await pb.collection(collections.secretWords).create({
+        game: gameId,
+        player: userId,
+        secret_word: normalizedSecret
+      });
+    }
     return;
   }
 
@@ -88,7 +123,6 @@ export async function joinRemoteGame(gameId: string, userId: string, secret: str
     seat += 1;
   }
 
-  const normalizedSecret = secret.trim().toUpperCase().slice(0, 12);
   const dotCount = normalizedSecret.split('').filter((char) => char === '.').length;
 
   await pb.collection(collections.players).create({
@@ -97,11 +131,17 @@ export async function joinRemoteGame(gameId: string, userId: string, secret: str
     seat_index: seat,
     score: 0,
     secret_word_hash: fakeHash(normalizedSecret),
-    secret_length: Math.max(normalizedSecret.length, 1),
+    secret_length: normalizedSecret.length,
     dot_count: dotCount,
-    revealed_mask: Array.from({ length: normalizedSecret.length || 1 }, () => false),
+    revealed_mask: Array.from({ length: normalizedSecret.length }, () => false),
     is_word_revealed: false,
     misspelled: false
+  });
+
+  await pb.collection(collections.secretWords).create({
+    game: gameId,
+    player: userId,
+    secret_word: normalizedSecret
   });
 }
 
@@ -121,23 +161,20 @@ export async function advanceTurn(gameId: string, nextPlayerUserId: string): Pro
   });
 }
 
-export async function updateRemoteScore(playerRecordId: string, score: number): Promise<void> {
-  await pb.collection(collections.players).update(playerRecordId, { score });
-}
-
-export async function appendGuess(remoteGameId: string, payload: {
+export async function submitRemoteGuess(remoteGameId: string, payload: {
   actor: string;
   target_player: string;
-  guess_char?: string;
-  guess_word?: string;
-  is_interruptive: boolean;
-  success: boolean;
-  points_delta: number;
-  reason?: string;
+  guess_char: string;
 }): Promise<void> {
   await pb.collection(collections.guesses).create({
     game: remoteGameId,
-    ...payload
+    actor: payload.actor,
+    target_player: payload.target_player,
+    guess_char: payload.guess_char.toUpperCase()[0],
+    is_interruptive: false,
+    success: false,
+    points_delta: 0,
+    reason: 'Pending validation'
   });
 }
 

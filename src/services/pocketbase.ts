@@ -12,6 +12,7 @@ export const collections = {
   users: 'users',
   games: 'probe_games',
   players: 'probe_players',
+  secretWords: 'probe_secret_words',
   turns: 'probe_turns',
   guesses: 'probe_guesses',
   activityDeck: 'probe_activity_cards',

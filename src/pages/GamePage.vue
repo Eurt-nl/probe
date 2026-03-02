@@ -50,7 +50,9 @@
                 <q-item v-for="player in remotePlayers" :key="player.id">
                   <q-item-section>
                     <q-item-label>{{ player.display_name }}</q-item-label>
-                    <q-item-label caption>playerId: {{ player.player }}</q-item-label>
+                    <q-item-label caption>
+                      Verborgen: {{ player.hidden_count }} | playerId: {{ player.player }}
+                    </q-item-label>
                   </q-item-section>
                   <q-item-section side>
                     <q-badge color="secondary" :label="String(player.score)" />
@@ -62,7 +64,7 @@
 
           <q-card flat bordered class="q-mt-md">
             <q-card-section>
-              <div class="text-subtitle1">Beurt doorgeven</div>
+              <div class="text-subtitle1">Beurt doorgeven (fallback)</div>
               <q-select
                 v-model="nextTurnUserId"
                 class="q-mt-sm"
@@ -79,11 +81,11 @@
         <div class="col-12 col-lg-8">
           <q-card flat bordered>
             <q-card-section>
-              <div class="text-h6">Guess event toevoegen (realtime)</div>
-              <div class="text-caption text-grey-8">In remote modus log je events naar PocketBase; andere clients zien ze live.</div>
+              <div class="text-h6">Gok letter of dot (server-side validatie)</div>
+              <div class="text-caption text-grey-8">Maak een gok; PocketBase hook verwerkt score, reveal en beurtwissel.</div>
 
               <div class="row q-col-gutter-md q-mt-sm">
-                <div class="col-12 col-md-4">
+                <div class="col-12 col-md-6">
                   <q-select
                     v-model="targetUserId"
                     :options="remotePlayers.filter((p) => p.player !== session.userId).map((p) => ({ label: p.display_name, value: p.player }))"
@@ -92,17 +94,11 @@
                     label="Target speler"
                   />
                 </div>
-                <div class="col-12 col-md-2">
-                  <q-input v-model="remoteGuessChar" label="Letter/dot" maxlength="1" />
+                <div class="col-12 col-md-3">
+                  <q-input v-model="remoteGuessChar" label="Letter/dot" maxlength="1" hint="Gebruik . voor dot" />
                 </div>
-                <div class="col-12 col-md-2">
-                  <q-input v-model.number="remotePointsDelta" type="number" label="Punten" />
-                </div>
-                <div class="col-12 col-md-2">
-                  <q-toggle v-model="remoteSuccess" label="Success" />
-                </div>
-                <div class="col-12 col-md-2 flex items-end">
-                  <q-btn color="primary" label="Opslaan" @click="onAppendGuess" />
+                <div class="col-12 col-md-3 flex items-end">
+                  <q-btn color="primary" label="Verstuur gok" @click="onSubmitGuess" />
                 </div>
               </div>
             </q-card-section>
@@ -144,14 +140,13 @@ import { useSessionStore } from '@/stores/sessionStore';
 import type { ActivityCard } from '@/types/game';
 import type { RemoteGame, RemoteGuess, RemotePlayer } from '@/services/gameSync';
 import {
-  appendGuess,
   advanceTurn,
   getRemoteGame,
   listRemoteGuesses,
   listRemotePlayers,
   startRemoteGame,
-  subscribeRemoteGame,
-  updateRemoteScore
+  submitRemoteGuess,
+  subscribeRemoteGame
 } from '@/services/gameSync';
 import ActivityCardPanel from '@/components/ActivityCardPanel.vue';
 import GameBoard from '@/components/GameBoard.vue';
@@ -188,8 +183,6 @@ const remoteGame = ref<RemoteGame | null>(null);
 const remotePlayers = ref<RemotePlayer[]>([]);
 const remoteGuesses = ref<RemoteGuess[]>([]);
 const remoteGuessChar = ref('');
-const remotePointsDelta = ref(0);
-const remoteSuccess = ref(false);
 const targetUserId = ref('');
 const nextTurnUserId = ref('');
 
@@ -250,33 +243,21 @@ function handleLocalGuess(targetPlayerId: string, guess: string): void {
   });
 }
 
-async function onAppendGuess(): Promise<void> {
-  if (!remoteGame.value || !session.userId || !targetUserId.value || !remoteGuessChar.value) {
+async function onSubmitGuess(): Promise<void> {
+  if (!remoteGame.value || !session.userId || !targetUserId.value || !remoteGuessChar.value.trim()) {
     return;
   }
 
   try {
-    await appendGuess(remoteGame.value.id, {
+    await submitRemoteGuess(remoteGame.value.id, {
       actor: session.userId,
       target_player: targetUserId.value,
-      guess_char: remoteGuessChar.value.toUpperCase()[0],
-      is_interruptive: false,
-      success: remoteSuccess.value,
-      points_delta: Number(remotePointsDelta.value || 0),
-      reason: 'Manual remote guess event'
+      guess_char: remoteGuessChar.value
     });
 
-    const actorRow = remotePlayers.value.find((player) => player.player === session.userId);
-    if (actorRow && remotePointsDelta.value !== 0) {
-      await updateRemoteScore(actorRow.id, actorRow.score + Number(remotePointsDelta.value));
-    }
-
     remoteGuessChar.value = '';
-    remotePointsDelta.value = 0;
-    remoteSuccess.value = false;
-    await refreshRemote();
   } catch (error) {
-    $q.notify({ type: 'negative', message: `Guess opslaan mislukt: ${String(error)}` });
+    $q.notify({ type: 'negative', message: `Gok versturen mislukt: ${String(error)}` });
   }
 }
 
