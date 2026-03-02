@@ -44,6 +44,24 @@ function normalizeSecret(secret: string): string {
   return secret.trim().toUpperCase().replace(/[^A-Z.]/g, '').slice(0, 12);
 }
 
+function pbErrorString(error: unknown): string {
+  const anyError = error as {
+    response?: { message?: string; data?: Record<string, unknown> };
+    message?: string;
+  };
+  return anyError?.response?.message ?? anyError?.message ?? String(error);
+}
+
+function isSeatConflictError(error: unknown): boolean {
+  const raw = JSON.stringify((error as { response?: { data?: unknown } })?.response?.data ?? {});
+  return raw.includes('idx_probe_players_game_seat') || raw.includes('seat_index');
+}
+
+function isGamePlayerConflictError(error: unknown): boolean {
+  const raw = JSON.stringify((error as { response?: { data?: unknown } })?.response?.data ?? {});
+  return raw.includes('idx_probe_players_game_player') || raw.includes('(game, player)');
+}
+
 function hiddenCountFromMask(mask: unknown, fallbackLength: number): number {
   if (Array.isArray(mask)) {
     return mask.filter((item) => item === false).length;
@@ -102,6 +120,7 @@ export async function joinRemoteGame(gameId: string, userId: string, secret: str
 
   if (!ownPlayerRecord) {
     let created = false;
+    let alreadyJoined = false;
     for (let seat = 0; seat < 4; seat += 1) {
       try {
         await pb.collection(collections.players).create({
@@ -118,12 +137,22 @@ export async function joinRemoteGame(gameId: string, userId: string, secret: str
         });
         created = true;
         break;
-      } catch {
-        // Try the next seat index if this one is taken.
+      } catch (error) {
+        if (isGamePlayerConflictError(error)) {
+          alreadyJoined = true;
+          break;
+        }
+
+        if (isSeatConflictError(error)) {
+          // Try the next seat index if this one is taken.
+          continue;
+        }
+
+        throw new Error(`Player create failed: ${pbErrorString(error)}`);
       }
     }
 
-    if (!created) {
+    if (!created && !alreadyJoined) {
       throw new Error('Geen vrije plek beschikbaar in deze lobby');
     }
   } else {

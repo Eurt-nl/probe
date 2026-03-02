@@ -1,6 +1,7 @@
 import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import { Quasar } from 'quasar';
+import { Notify } from 'quasar';
 import quasarIconSet from 'quasar/icon-set/svg-material-icons';
 import quasarLang from 'quasar/lang/en-US';
 import '@quasar/extras/material-icons/material-icons.css';
@@ -17,7 +18,10 @@ app.use(pinia);
 app.use(router);
 app.use(Quasar, {
   lang: quasarLang,
-  iconSet: quasarIconSet
+  iconSet: quasarIconSet,
+  plugins: {
+    Notify
+  }
 });
 
 // Restore PocketBase auth state at startup so remote mode works after refresh.
