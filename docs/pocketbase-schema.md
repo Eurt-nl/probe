@@ -25,7 +25,7 @@ Fields:
 
 Rules:
 
-- List/View: `@request.auth.id != "" && (owner = @request.auth.id || probe_players_via_game.player ?= @request.auth.id)`
+- List/View: `@request.auth.id != ""`
 - Create: `@request.auth.id != "" && owner = @request.auth.id`
 - Update: `@request.auth.id != "" && (owner = @request.auth.id || turn_player = @request.auth.id)`
 - Delete: `@request.auth.id != "" && owner = @request.auth.id`
@@ -47,7 +47,7 @@ Fields:
 
 Rules:
 
-- List/View: `@request.auth.id != "" && game.probe_players_via_game.player ?= @request.auth.id`
+- List/View: `@request.auth.id != ""`
 - Create: `@request.auth.id != "" && player = @request.auth.id`
 - Update: `@request.auth.id != "" && (player = @request.auth.id || game.turn_player = @request.auth.id)`
 - Delete: `@request.auth.id != "" && game.owner = @request.auth.id && game.status = "lobby"`
@@ -64,7 +64,7 @@ Fields:
 
 Rules:
 
-- List/View: `@request.auth.id != "" && game.probe_players_via_game.player ?= @request.auth.id && player = @request.auth.id`
+- List/View: `@request.auth.id != "" && player = @request.auth.id`
 - Create: `@request.auth.id != "" && player = @request.auth.id`
 - Update/Delete: `@request.auth.id != "" && player = @request.auth.id && game.status = "lobby"`
 
@@ -81,7 +81,7 @@ Fields:
 
 Rules:
 
-- List/View: `@request.auth.id != "" && game.probe_players_via_game.player ?= @request.auth.id`
+- List/View: `@request.auth.id != ""`
 - Create/Update: `@request.auth.id != "" && game.turn_player = @request.auth.id`
 
 ## 6) `probe_guesses`
@@ -101,7 +101,7 @@ Fields:
 
 Rules:
 
-- List/View: `@request.auth.id != "" && game.probe_players_via_game.player ?= @request.auth.id`
+- List/View: `@request.auth.id != ""`
 - Create: `@request.auth.id != "" && actor = @request.auth.id && game.turn_player = @request.auth.id`
 
 ## 7) `probe_activity_cards`

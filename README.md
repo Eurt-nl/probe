@@ -63,6 +63,15 @@ PB_ADMIN_PASSWORD=your_password \
 npm run fix:pb-required
 ```
 
+7. If you see `missing or invalid collection context`, run:
+
+```bash
+PB_URL=https://pb.9621da15.cloud \
+PB_ADMIN_EMAIL=you@example.com \
+PB_ADMIN_PASSWORD=your_password \
+npm run fix:pb-rules
+```
+
 ## Notifications
 
 - Ntfy publish helper is implemented in `src/services/ntfy.ts`.

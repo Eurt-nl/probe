@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "seed:cards": "node scripts/seed-activity-cards.mjs",
     "referee:remote": "node scripts/remote-referee.mjs",
-    "fix:pb-required": "node scripts/fix-pocketbase-required-fields.mjs"
+    "fix:pb-required": "node scripts/fix-pocketbase-required-fields.mjs",
+    "fix:pb-rules": "node scripts/fix-pocketbase-rules-context.mjs"
   },
   "dependencies": {
     "@quasar/extras": "^1.16.16",
