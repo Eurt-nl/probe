@@ -641,7 +641,7 @@
       },
       {
         "id": "bool600000002",
-        "name": "sent_via_ntfy",
+        "name": "sent_ntfy",
         "type": "bool",
         "required": true,
         "system": false,

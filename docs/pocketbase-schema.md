@@ -141,7 +141,7 @@ Fields:
 - `title` (text, required)
 - `body` (text, required)
 - `is_read` (bool, required, default false)
-- `sent_via_ntfy` (bool, required, default false)
+- `sent_ntfy` (bool, required, default false)
 - `ntfy_topic` (text, optional)
 
 Rules:
