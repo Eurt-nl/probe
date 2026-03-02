@@ -7,7 +7,7 @@
         <q-card-section class="row items-center justify-between">
           <div>
             <div class="text-h5">Probe PWA</div>
-            <div class="text-body2 text-grey-8">Lokaal spelen of realtime via PocketBase lobby.</div>
+            <div class="text-body2 text-grey-8">Realtime via PocketBase lobby.</div>
           </div>
           <q-chip color="primary" text-color="white" :label="session.isAuthenticated ? `Ingelogd als ${session.displayName}` : 'Niet ingelogd'" />
         </q-card-section>
@@ -43,7 +43,7 @@
 
       <q-card flat bordered class="q-mb-md" v-if="session.isAuthenticated">
         <q-card-section>
-          <div class="text-h6">Remote Lobby (PocketBase realtime)</div>
+          <div class="text-h6">Lobby</div>
           <div class="row q-col-gutter-md q-mt-sm">
             <div class="col-12 col-md-4">
               <q-input
@@ -54,12 +54,9 @@
               />
             </div>
             <div class="col-12 col-md-4">
-              <q-input v-model="createJoinCode" label="Join-code (bijv. 1234)" />
+              <q-input v-model="joinCode" label="Join-code of game-id (bijv. 1234)" />
             </div>
-            <div class="col-12 col-md-4">
-              <q-input v-model="joinGameId" label="Game ID of join-code om te joinen" />
-            </div>
-            <div class="col-12 col-md-12 flex items-end">
+            <div class="col-12 col-md-4 flex items-end">
               <div class="row q-gutter-sm">
                 <q-btn color="primary" label="Nieuwe lobby" @click="createRemote" />
                 <q-btn color="accent" label="Join lobby" @click="joinRemote" />
@@ -75,65 +72,15 @@
         </q-card-section>
       </q-card>
 
-      <q-card flat bordered class="q-mb-md">
-        <q-card-section class="row q-col-gutter-md">
-          <div class="col-12 col-md-4">
-            <q-input v-model="ownerName" label="Jouw naam" />
-          </div>
-          <div class="col-12 col-md-4">
-            <q-input
-              v-model="ownerSecret"
-              label="Jouw geheime woord"
-              hint="Max 12 chars, dots met ."
-              maxlength="12"
-            />
-          </div>
-          <div class="col-12 col-md-4 flex items-end">
-            <q-btn color="primary" label="Nieuw lokaal spel" unelevated @click="createLocalGame" />
-          </div>
-        </q-card-section>
-      </q-card>
-
-      <q-card flat bordered class="q-mb-md" v-if="localGame">
-        <q-card-section>
-          <div class="text-h6">Lokaal spelers toevoegen</div>
-          <div class="row q-col-gutter-md q-mt-sm">
-            <div class="col-12 col-md-4">
-              <q-input v-model="newPlayerName" label="Naam speler" />
-            </div>
-            <div class="col-12 col-md-4">
-              <q-input v-model="newPlayerSecret" label="Geheime woord" maxlength="12" />
-            </div>
-            <div class="col-12 col-md-4 flex items-end">
-              <q-btn color="secondary" label="Speler toevoegen" @click="addLocalPlayer" />
-            </div>
-          </div>
-        </q-card-section>
-      </q-card>
-
-      <q-card flat bordered v-if="localGame">
-        <q-card-section class="row items-center justify-between">
-          <div>
-            <div class="text-subtitle1">Lokale Game ID</div>
-            <div class="text-caption">{{ localGame.id }}</div>
-          </div>
-          <div class="row q-gutter-sm">
-            <q-btn color="accent" label="Start lokaal spel" :disable="localGame.players.length < 2" @click="startLocalGame" />
-            <q-btn color="primary" outline label="Open lokaal spel" @click="openLocalGame" />
-          </div>
-        </q-card-section>
-      </q-card>
-
       <AppVersionPanel class="q-mt-md" />
     </div>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
-import { useGameStore } from '@/stores/gameStore';
 import { useSessionStore } from '@/stores/sessionStore';
 import VersionBanner from '@/components/VersionBanner.vue';
 import AppVersionPanel from '@/components/AppVersionPanel.vue';
@@ -142,25 +89,16 @@ import { createRemoteGame, joinRemoteGame, resolveRemoteGameId } from '@/service
 
 const router = useRouter();
 const $q = useQuasar();
-const gameStore = useGameStore();
 const session = useSessionStore();
 const { updateApp } = useSwUpdate();
-
-const ownerName = ref('');
-const ownerSecret = ref('');
-const newPlayerName = ref('');
-const newPlayerSecret = ref('');
 
 const authName = ref('');
 const authEmail = ref('');
 const authPassword = ref('');
 const remoteSecret = ref('');
-const createJoinCode = ref('');
+const joinCode = ref('');
 const activeJoinCode = ref('');
-const joinGameId = ref('');
 const remoteGameId = ref('');
-
-const localGame = computed(() => gameStore.game);
 
 function errorMessage(error: unknown): string {
   const anyError = error as {
@@ -194,16 +132,16 @@ async function register(): Promise<void> {
 }
 
 async function createRemote(): Promise<void> {
-  if (!session.userId || !remoteSecret.value.trim()) {
-    $q.notify({ type: 'warning', message: 'Login en vul geheim woord in' });
+  if (!session.userId || !remoteSecret.value.trim() || !joinCode.value.trim()) {
+    $q.notify({ type: 'warning', message: 'Login, geheim woord en join-code zijn verplicht' });
     return;
   }
 
   try {
-    const game = await createRemoteGame(session.userId, 'classic', createJoinCode.value.trim());
+    const game = await createRemoteGame(session.userId, 'classic', joinCode.value.trim());
     await joinRemoteGame(game.id, session.userId, remoteSecret.value.trim());
     remoteGameId.value = game.id;
-    activeJoinCode.value = game.seed ?? createJoinCode.value.trim();
+    activeJoinCode.value = joinCode.value.trim();
     $q.notify({ type: 'positive', message: `Lobby aangemaakt: ${game.id}` });
   } catch (error) {
     $q.notify({ type: 'negative', message: `Lobby aanmaken mislukt: ${errorMessage(error)}` });
@@ -211,16 +149,16 @@ async function createRemote(): Promise<void> {
 }
 
 async function joinRemote(): Promise<void> {
-  if (!session.userId || !joinGameId.value.trim() || !remoteSecret.value.trim()) {
-    $q.notify({ type: 'warning', message: 'Vul game ID en geheim woord in' });
+  if (!session.userId || !joinCode.value.trim() || !remoteSecret.value.trim()) {
+    $q.notify({ type: 'warning', message: 'Login, geheim woord en join-code/game-id zijn verplicht' });
     return;
   }
 
   try {
-    const resolvedGameId = await resolveRemoteGameId(joinGameId.value.trim());
+    const resolvedGameId = await resolveRemoteGameId(joinCode.value.trim());
     await joinRemoteGame(resolvedGameId, session.userId, remoteSecret.value.trim());
     remoteGameId.value = resolvedGameId;
-    activeJoinCode.value = joinGameId.value.trim();
+    activeJoinCode.value = joinCode.value.trim();
     $q.notify({ type: 'positive', message: `Joined lobby: ${remoteGameId.value}` });
   } catch (error) {
     $q.notify({ type: 'negative', message: `Join mislukt: ${errorMessage(error)}` });
@@ -229,29 +167,7 @@ async function joinRemote(): Promise<void> {
 
 function openRemoteGame(): void {
   if (!remoteGameId.value) return;
-  router.push({ name: 'game', params: { gameId: remoteGameId.value }, query: { mode: 'remote' } });
-}
-
-function createLocalGame(): void {
-  if (!ownerName.value.trim() || !ownerSecret.value.trim()) return;
-  gameStore.createGame(ownerName.value.trim(), ownerSecret.value.trim());
-}
-
-function addLocalPlayer(): void {
-  if (!newPlayerName.value.trim() || !newPlayerSecret.value.trim()) return;
-  gameStore.addPlayer(newPlayerName.value.trim(), newPlayerSecret.value.trim());
-  newPlayerName.value = '';
-  newPlayerSecret.value = '';
-}
-
-function startLocalGame(): void {
-  gameStore.startGame();
-  openLocalGame();
-}
-
-function openLocalGame(): void {
-  if (!gameStore.game) return;
-  router.push({ name: 'game', params: { gameId: gameStore.game.id }, query: { mode: 'local' } });
+  router.push({ name: 'game', params: { gameId: remoteGameId.value } });
 }
 
 function triggerUpdate(): void {
