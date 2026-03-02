@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "seed:cards": "node scripts/seed-activity-cards.mjs"
   },
   "dependencies": {
     "@quasar/extras": "^1.16.16",

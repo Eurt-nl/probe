@@ -1,0 +1,12 @@
+[
+  { "code": "NORMAL_TURN", "label": "Take your normal turn", "type": "NORMAL_TURN", "enabled": true },
+  { "code": "ADDITIONAL_TURN", "label": "Take an additional turn", "type": "ADDITIONAL_TURN", "enabled": true },
+  { "code": "LEFT_EXPOSES", "label": "Opponent on your left exposes one slot", "type": "LEFT_EXPOSES", "enabled": true },
+  { "code": "RIGHT_EXPOSES", "label": "Opponent on your right exposes one slot", "type": "RIGHT_EXPOSES", "enabled": true },
+  { "code": "EXPOSE_OWN_DOT", "label": "If you have a dot, expose it", "type": "EXPOSE_OWN_DOT", "enabled": true },
+  { "code": "TRIPLE_FIRST_GUESS", "label": "Triple value of your first guess", "type": "MULTIPLY_FIRST_GUESS", "value": 3, "enabled": true },
+  { "code": "QUADRUPLE_FIRST_GUESS", "label": "Quadruple value of your first guess", "type": "MULTIPLY_FIRST_GUESS", "value": 4, "enabled": true },
+  { "code": "QUINTUPLE_FIRST_GUESS", "label": "Quintuple value of your first guess", "type": "MULTIPLY_FIRST_GUESS", "value": 5, "enabled": true },
+  { "code": "ADD_25", "label": "Add +25 to your score", "type": "ADD_SCORE", "value": 25, "enabled": true },
+  { "code": "DEDUCT_25", "label": "Deduct -25 from your score", "type": "DEDUCT_SCORE", "value": -25, "enabled": true }
+]

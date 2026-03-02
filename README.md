@@ -58,3 +58,27 @@ Override via env variables:
 
 - Ntfy publish helper is implemented in `src/services/ntfy.ts`.
 - In-app notifications collection and recommended flow are documented in `docs/notifications.md`.
+
+## Seed activity cards
+
+`probe_activity_cards` can be seeded with:
+
+```bash
+PB_URL=https://pb.9621da15.cloud \
+PB_ADMIN_EMAIL=you@example.com \
+PB_ADMIN_PASSWORD=your_password \
+npm run seed:cards
+```
+
+Seed source file:
+
+- `pocketbase/activity-cards.seed.json`
+
+## Realtime remote mode
+
+- Home page now supports PocketBase login/register.
+- Create or join a remote lobby by `gameId`.
+- Game page in `mode=remote` subscribes realtime to:
+  - `probe_games`
+  - `probe_players`
+  - `probe_guesses`
