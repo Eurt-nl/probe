@@ -126,14 +126,14 @@ export async function joinRemoteGame(gameId: string, userId: string, secret: str
         await pb.collection(collections.players).create({
           game: gameId,
           player: userId,
-          seat_index: seat,
-          score: 0,
+          seat_index: String(seat),
+          score: '0',
           secret_word_hash: fakeHash(normalizedSecret),
-          secret_length: normalizedSecret.length,
-          dot_count: dotCount,
-          revealed_mask: Array.from({ length: normalizedSecret.length }, () => false),
-          is_word_revealed: false,
-          misspelled: false
+          secret_length: String(normalizedSecret.length),
+          dot_count: String(dotCount),
+          revealed_mask: JSON.stringify(Array.from({ length: normalizedSecret.length }, () => false)),
+          is_word_revealed: 'false',
+          misspelled: 'false'
         });
         created = true;
         break;
@@ -158,11 +158,11 @@ export async function joinRemoteGame(gameId: string, userId: string, secret: str
   } else {
     await pb.collection(collections.players).update(ownPlayerRecord.id, {
       secret_word_hash: fakeHash(normalizedSecret),
-      secret_length: normalizedSecret.length,
-      dot_count: dotCount,
-      revealed_mask: Array.from({ length: normalizedSecret.length }, () => false),
-      is_word_revealed: false,
-      misspelled: false
+      secret_length: String(normalizedSecret.length),
+      dot_count: String(dotCount),
+      revealed_mask: JSON.stringify(Array.from({ length: normalizedSecret.length }, () => false)),
+      is_word_revealed: 'false',
+      misspelled: 'false'
     });
   }
 
@@ -210,9 +210,9 @@ export async function submitRemoteGuess(remoteGameId: string, payload: {
     actor: payload.actor,
     target_player: payload.target_player,
     guess_char: payload.guess_char.toUpperCase()[0],
-    is_interruptive: false,
-    success: false,
-    points_delta: 0,
+    is_interruptive: 'false',
+    success: 'false',
+    points_delta: '0',
     reason: 'Pending validation'
   });
 }

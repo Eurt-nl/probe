@@ -37,13 +37,13 @@ Fields:
 - `game` (relation -> probe_games)
 - `player` (relation -> users)
 - `seat_index` (number, 0..3)
-- `score` (number)
+- `score` (number, 0 toegestaan)
 - `secret_word_hash` (text)
 - `secret_length` (number, 1..12)
-- `dot_count` (number, 0..5)
+- `dot_count` (number, 0..5; 0 toegestaan)
 - `revealed_mask` (json)
-- `is_word_revealed` (bool)
-- `misspelled` (bool)
+- `is_word_revealed` (bool, `false` toegestaan)
+- `misspelled` (bool, `false` toegestaan)
 
 Rules:
 
@@ -95,8 +95,8 @@ Fields:
 - `guess_char` (text, max 1)
 - `guess_word` (text, max 12, optional)
 - `is_interruptive` (bool)
-- `success` (bool)
-- `points_delta` (number)
+- `success` (bool, `false` toegestaan)
+- `points_delta` (number, 0 toegestaan)
 - `reason` (text)
 
 Rules:
@@ -128,8 +128,8 @@ Fields:
 - `type` (`turn_start`, `game_update`, `system`)
 - `title` (text)
 - `body` (text)
-- `is_read` (bool)
-- `sent_ntfy` (bool)
+- `is_read` (bool, `false` toegestaan)
+- `sent_ntfy` (bool, `false` toegestaan)
 - `ntfy_topic` (text, optional)
 
 Rules:

@@ -55,8 +55,8 @@ async function createNotification(userId, gameId, title, body) {
     type: 'game_update',
     title,
     body,
-    is_read: false,
-    sent_ntfy: false,
+    is_read: 'false',
+    sent_ntfy: 'false',
     ntfy_topic: ''
   });
 }
@@ -70,8 +70,8 @@ async function processGuess(record) {
   const game = await pb.collection('probe_games').getOne(gameId);
   if (String(game.status) !== 'active') {
     await pb.collection('probe_guesses').update(record.id, {
-      success: false,
-      points_delta: 0,
+      success: 'false',
+      points_delta: '0',
       reason: 'Game is not active'
     });
     return;
@@ -79,8 +79,8 @@ async function processGuess(record) {
 
   if (String(game.turn_player) !== actorUserId) {
     await pb.collection('probe_guesses').update(record.id, {
-      success: false,
-      points_delta: 0,
+      success: 'false',
+      points_delta: '0',
       reason: 'Not your turn'
     });
     return;
@@ -92,8 +92,8 @@ async function processGuess(record) {
 
   if (!actor || !target) {
     await pb.collection('probe_guesses').update(record.id, {
-      success: false,
-      points_delta: 0,
+      success: 'false',
+      points_delta: '0',
       reason: 'Invalid actor/target'
     });
     return;
@@ -132,8 +132,8 @@ async function processGuess(record) {
     });
 
     await pb.collection('probe_guesses').update(record.id, {
-      success: true,
-      points_delta: pointsDelta,
+      success: 'true',
+      points_delta: String(pointsDelta),
       reason: isNowFullyRevealed ? 'Correct + word complete bonus' : 'Correct guess'
     });
 
@@ -171,8 +171,8 @@ async function processGuess(record) {
   }
 
   await pb.collection('probe_guesses').update(record.id, {
-    success: false,
-    points_delta: penalty,
+    success: 'false',
+    points_delta: String(penalty),
     reason: penalty < 0 ? 'Dot penalty applied (-50)' : 'Missed guess'
   });
 }

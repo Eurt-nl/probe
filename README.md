@@ -54,6 +54,14 @@ Override via env variables:
 3. Upload `pocketbase/collections.import.json`.
 4. Keep `users` as-is (this import only creates the non-user collections).
 5. If you imported an older version earlier, re-import this file so `probe_secret_words` is added.
+6. If lobby/join fails with `Cannot be blank` on numeric/bool fields, run:
+
+```bash
+PB_URL=https://pb.9621da15.cloud \
+PB_ADMIN_EMAIL=you@example.com \
+PB_ADMIN_PASSWORD=your_password \
+npm run fix:pb-required
+```
 
 ## Notifications
 

@@ -8,7 +8,8 @@
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "seed:cards": "node scripts/seed-activity-cards.mjs",
-    "referee:remote": "node scripts/remote-referee.mjs"
+    "referee:remote": "node scripts/remote-referee.mjs",
+    "fix:pb-required": "node scripts/fix-pocketbase-required-fields.mjs"
   },
   "dependencies": {
     "@quasar/extras": "^1.16.16",
