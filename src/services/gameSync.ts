@@ -7,6 +7,7 @@ export interface RemoteGame {
   turn_player: string;
   max_players: number;
   rule_mode: 'classic' | 'two_player' | 'progressive';
+  seed?: string;
 }
 
 export interface RemotePlayer {
@@ -69,13 +70,20 @@ function hiddenCountFromMask(mask: unknown, fallbackLength: number): number {
   return fallbackLength;
 }
 
-export async function createRemoteGame(ownerUserId: string, mode: RemoteGame['rule_mode'] = 'classic'): Promise<RemoteGame> {
+export async function createRemoteGame(
+  ownerUserId: string,
+  mode: RemoteGame['rule_mode'] = 'classic',
+  joinCode?: string
+): Promise<RemoteGame> {
+  const normalizedCode = joinCode?.trim();
+
   const created = await pb.collection(collections.games).create({
     status: 'lobby',
     owner: ownerUserId,
     turn_player: ownerUserId,
     max_players: 4,
-    rule_mode: mode
+    rule_mode: mode,
+    seed: normalizedCode || ''
   });
   return created as unknown as RemoteGame;
 }
@@ -83,6 +91,29 @@ export async function createRemoteGame(ownerUserId: string, mode: RemoteGame['ru
 export async function getRemoteGame(gameId: string): Promise<RemoteGame> {
   const game = await pb.collection(collections.games).getOne(gameId);
   return game as unknown as RemoteGame;
+}
+
+export async function resolveRemoteGameId(gameIdOrCode: string): Promise<string> {
+  const value = gameIdOrCode.trim();
+  if (!value) {
+    throw new Error('Game ID/code is leeg');
+  }
+
+  const byId = await pb.collection(collections.games).getOne(value).catch(() => null);
+  if (byId?.id) {
+    return byId.id;
+  }
+
+  const byCode = await pb
+    .collection(collections.games)
+    .getFirstListItem(pb.filter('seed = {:code}', { code: value }))
+    .catch(() => null);
+
+  if (byCode?.id) {
+    return byCode.id;
+  }
+
+  throw new Error('Lobby niet gevonden voor deze game-id/join-code');
 }
 
 export async function listRemotePlayers(gameId: string): Promise<RemotePlayer[]> {

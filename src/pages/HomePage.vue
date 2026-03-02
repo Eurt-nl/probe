@@ -54,9 +54,12 @@
               />
             </div>
             <div class="col-12 col-md-4">
-              <q-input v-model="joinGameId" label="Game ID om te joinen" />
+              <q-input v-model="createJoinCode" label="Join-code (bijv. 1234)" />
             </div>
-            <div class="col-12 col-md-4 flex items-end">
+            <div class="col-12 col-md-4">
+              <q-input v-model="joinGameId" label="Game ID of join-code om te joinen" />
+            </div>
+            <div class="col-12 col-md-12 flex items-end">
               <div class="row q-gutter-sm">
                 <q-btn color="primary" label="Nieuwe lobby" @click="createRemote" />
                 <q-btn color="accent" label="Join lobby" @click="joinRemote" />
@@ -65,7 +68,8 @@
           </div>
 
           <div class="q-mt-md" v-if="remoteGameId">
-            <div class="text-caption">Remote game: {{ remoteGameId }}</div>
+            <div class="text-caption">Remote game record ID: {{ remoteGameId }}</div>
+            <div class="text-caption" v-if="activeJoinCode">Join-code: {{ activeJoinCode }}</div>
             <q-btn class="q-mt-sm" color="primary" outline label="Open remote game" @click="openRemoteGame" />
           </div>
         </q-card-section>
@@ -134,7 +138,7 @@ import { useSessionStore } from '@/stores/sessionStore';
 import VersionBanner from '@/components/VersionBanner.vue';
 import AppVersionPanel from '@/components/AppVersionPanel.vue';
 import { useSwUpdate } from '@/services/swUpdate';
-import { createRemoteGame, joinRemoteGame } from '@/services/gameSync';
+import { createRemoteGame, joinRemoteGame, resolveRemoteGameId } from '@/services/gameSync';
 
 const router = useRouter();
 const $q = useQuasar();
@@ -151,6 +155,8 @@ const authName = ref('');
 const authEmail = ref('');
 const authPassword = ref('');
 const remoteSecret = ref('');
+const createJoinCode = ref('');
+const activeJoinCode = ref('');
 const joinGameId = ref('');
 const remoteGameId = ref('');
 
@@ -194,9 +200,10 @@ async function createRemote(): Promise<void> {
   }
 
   try {
-    const game = await createRemoteGame(session.userId);
+    const game = await createRemoteGame(session.userId, 'classic', createJoinCode.value.trim());
     await joinRemoteGame(game.id, session.userId, remoteSecret.value.trim());
     remoteGameId.value = game.id;
+    activeJoinCode.value = game.seed ?? createJoinCode.value.trim();
     $q.notify({ type: 'positive', message: `Lobby aangemaakt: ${game.id}` });
   } catch (error) {
     $q.notify({ type: 'negative', message: `Lobby aanmaken mislukt: ${errorMessage(error)}` });
@@ -210,8 +217,10 @@ async function joinRemote(): Promise<void> {
   }
 
   try {
-    await joinRemoteGame(joinGameId.value.trim(), session.userId, remoteSecret.value.trim());
-    remoteGameId.value = joinGameId.value.trim();
+    const resolvedGameId = await resolveRemoteGameId(joinGameId.value.trim());
+    await joinRemoteGame(resolvedGameId, session.userId, remoteSecret.value.trim());
+    remoteGameId.value = resolvedGameId;
+    activeJoinCode.value = joinGameId.value.trim();
     $q.notify({ type: 'positive', message: `Joined lobby: ${remoteGameId.value}` });
   } catch (error) {
     $q.notify({ type: 'negative', message: `Join mislukt: ${errorMessage(error)}` });
