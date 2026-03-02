@@ -1,5 +1,11 @@
 import process from 'node:process';
 import PocketBase from 'pocketbase';
+import { EventSource } from 'eventsource';
+
+// PocketBase realtime in Node requires an EventSource implementation.
+if (!globalThis.EventSource) {
+  globalThis.EventSource = EventSource;
+}
 
 const pbUrl = process.env.PB_URL || 'https://pb.9621da15.cloud';
 const adminEmail = process.env.PB_ADMIN_EMAIL;
