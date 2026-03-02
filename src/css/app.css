@@ -1,0 +1,25 @@
+:root {
+  --probe-bg: radial-gradient(circle at 10% 0%, #f8f0dd 0%, #efe5cc 40%, #d9c9a4 100%);
+  --probe-primary: #0e5f73;
+  --probe-accent: #d8732a;
+}
+
+body {
+  margin: 0;
+  font-family: 'Avenir Next', 'Segoe UI', sans-serif;
+  background: var(--probe-bg);
+}
+
+.page-wrap {
+  min-height: calc(100vh - 50px);
+}
+
+.container {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.slot-chip {
+  min-width: 74px;
+  justify-content: center;
+}
