@@ -57,6 +57,11 @@ export interface RemoteTurn {
   activity_card_label?: string;
 }
 
+export interface RemoteTurnNotification {
+  id: string;
+  body: string;
+}
+
 export interface LobbyGameSummary {
   id: string;
   ownerId: string;
@@ -540,6 +545,24 @@ export async function createRemoteTurnForCurrentPlayer(gameId: string, turnPlaye
   }
 }
 
+export async function getLatestTurnNotification(gameId: string): Promise<RemoteTurnNotification | null> {
+  const record = await pb.collection(collections.notifications)
+    .getFirstListItem(
+      pb.filter('game = {:gameId} && type = {:type}', { gameId, type: 'turn_start' }),
+      {
+        requestKey: null,
+        sort: '-created'
+      }
+    )
+    .catch(() => null);
+
+  if (!record) return null;
+  return {
+    id: String(record.id),
+    body: String(record.body ?? '')
+  };
+}
+
 export async function sendRemoteChatMessage(gameId: string, actorUserId: string, message: string): Promise<void> {
   const trimmed = message.trim();
   if (!trimmed) {
@@ -581,6 +604,11 @@ export async function subscribeRemoteGame(gameId: string, onChange: () => void):
     filter: pb.filter('game = {:gameId}', { gameId })
   });
   unsubs.push(() => pb.collection(collections.turns).unsubscribe('*'));
+
+  await pb.collection(collections.notifications).subscribe('*', onChange, {
+    filter: pb.filter('game = {:gameId} && type = {:type}', { gameId, type: 'turn_start' })
+  });
+  unsubs.push(() => pb.collection(collections.notifications).unsubscribe('*'));
 
   return () => {
     unsubs.forEach((unsubscribe) => unsubscribe());
