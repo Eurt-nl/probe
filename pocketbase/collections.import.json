@@ -326,7 +326,7 @@
     "id": "pbc_1000000004",
     "listRule": "@request.auth.id != '' && game.probe_players_via_game.player ?= @request.auth.id",
     "viewRule": "@request.auth.id != '' && game.probe_players_via_game.player ?= @request.auth.id",
-    "createRule": "@request.auth.id != '' && game.turn_player = @request.auth.id",
+    "createRule": "@request.auth.id != '' && game.probe_players_via_game.player ?= @request.auth.id && player = game.turn_player && game.status = 'active'",
     "updateRule": "@request.auth.id != '' && game.turn_player = @request.auth.id",
     "deleteRule": null,
     "name": "probe_turns",

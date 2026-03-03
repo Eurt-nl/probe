@@ -398,11 +398,14 @@ async function refreshRemote(): Promise<void> {
   if (
     remoteGame.value.status === 'active' &&
     localIsParticipant &&
-    localUserId === currentTurnPlayer &&
     !activeTurnMatchesGame
   ) {
-    await createRemoteTurnForCurrentPlayer(gameId.value, currentTurnPlayer).catch(() => {});
-    activeTurn = await getActiveRemoteTurn(gameId.value).catch(() => activeTurn);
+    try {
+      await createRemoteTurnForCurrentPlayer(gameId.value, currentTurnPlayer);
+      activeTurn = await getActiveRemoteTurn(gameId.value).catch(() => activeTurn);
+    } catch (error) {
+      $q.notify({ type: 'warning', message: `Turn synchronisatie mislukt: ${errorMessage(error)}` });
+    }
   }
 
   maybeShowFinishedDialog();
