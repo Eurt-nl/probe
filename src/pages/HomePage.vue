@@ -44,18 +44,10 @@
       <template v-if="session.isAuthenticated">
         <q-card flat bordered class="q-mb-md">
           <q-card-section>
-            <div class="text-h6">Nieuwe of bestaande lobby</div>
-            <div class="row q-col-gutter-md q-mt-sm">
-              <div class="col-12 col-md-6">
-                <q-input v-model="joinCodeInput" label="Join-code (bijv. 1234)" />
-              </div>
-              <div class="col-12 col-md-6 flex items-end">
-                <div class="row q-gutter-sm">
-                  <q-btn color="primary" label="Nieuw spel" @click="onCreateGame" />
-                  <q-btn color="accent" label="Join via code" @click="onJoinByCode" />
-                  <q-btn color="secondary" outline label="Ververs" @click="loadLobbyData" />
-                </div>
-              </div>
+            <div class="text-h6">Lobby acties</div>
+            <div class="row q-gutter-sm q-mt-sm">
+              <q-btn color="primary" label="Nieuw spel" @click="onCreateGame" />
+              <q-btn color="secondary" outline label="Ververs" @click="loadLobbyData" />
             </div>
           </q-card-section>
         </q-card>
@@ -67,7 +59,7 @@
               <q-item v-for="game in lobbyGames" :key="game.id">
                 <q-item-section>
                   <q-item-label>
-                    Code: <strong>{{ game.joinCode || '(geen code)' }}</strong>
+                    Game ID: <strong>{{ game.id }}</strong>
                   </q-item-label>
                   <q-item-label caption>
                     Owner: {{ game.ownerName }} • {{ game.participantCount }}/{{ game.maxPlayers }} spelers
@@ -81,14 +73,14 @@
                       outline
                       size="sm"
                       label="Open"
-                      @click="openRemoteGame(game.id, game.joinCode)"
+                      @click="openRemoteGame(game.id)"
                     />
                     <q-btn
                       v-else-if="game.canJoin"
                       color="accent"
                       size="sm"
                       label="Neem deel"
-                      @click="promptSecretForJoin(game.id, game.joinCode)"
+                      @click="promptSecretForJoin(game.id)"
                     />
                     <q-badge v-else color="grey-6" text-color="white" label="Vol" />
                   </div>
@@ -106,14 +98,14 @@
               <q-item v-for="game in activeGames" :key="game.gameId">
                 <q-item-section>
                   <q-item-label>
-                    Code: <strong>{{ game.joinCode || '(geen code)' }}</strong>
+                    Game ID: <strong>{{ game.gameId }}</strong>
                   </q-item-label>
                   <q-item-label caption>
                     Owner: {{ game.ownerName }} • {{ game.participantCount }} spelers
                   </q-item-label>
                 </q-item-section>
                 <q-item-section side>
-                  <q-btn color="primary" size="sm" label="Ga naar spel" @click="openRemoteGame(game.gameId, game.joinCode)" />
+                  <q-btn color="primary" size="sm" label="Ga naar spel" @click="openRemoteGame(game.gameId)" />
                 </q-item-section>
               </q-item>
             </q-list>
@@ -129,7 +121,7 @@
       <q-card style="min-width: 420px">
         <q-card-section>
           <div class="text-h6">Geheim woord invullen</div>
-          <div class="text-caption">Code: {{ pendingJoinCode || '(geen code)' }}</div>
+          <div class="text-caption">Game ID: {{ pendingGameId || '-' }}</div>
         </q-card-section>
 
         <q-card-section>
@@ -163,7 +155,6 @@ import {
   joinRemoteGame,
   listActiveGameLinks,
   listLobbyGames,
-  resolveRemoteGameId,
   type ActiveGameLink,
   type LobbyGameSummary
 } from '@/services/gameSync';
@@ -176,9 +167,6 @@ const { updateApp } = useSwUpdate();
 const authName = ref('');
 const authEmail = ref('');
 const authPassword = ref('');
-const joinCodeInput = ref('');
-const activeJoinCode = ref('');
-const remoteGameId = ref('');
 
 const lobbyGames = ref<LobbyGameSummary[]>([]);
 const activeGames = ref<ActiveGameLink[]>([]);
@@ -186,7 +174,6 @@ const activeGames = ref<ActiveGameLink[]>([]);
 const secretDialogOpen = ref(false);
 const secretDialogValue = ref('');
 const pendingGameId = ref('');
-const pendingJoinCode = ref('');
 
 function errorMessage(error: unknown): string {
   const anyError = error as {
@@ -204,8 +191,12 @@ async function loadLobbyData(): Promise<void> {
     return;
   }
 
-  lobbyGames.value = await listLobbyGames(session.userId);
-  activeGames.value = await listActiveGameLinks(session.userId);
+  try {
+    lobbyGames.value = await listLobbyGames(session.userId);
+    activeGames.value = await listActiveGameLinks(session.userId);
+  } catch (error) {
+    $q.notify({ type: 'negative', message: `Lobby laden mislukt: ${errorMessage(error)}` });
+  }
 }
 
 async function login(): Promise<void> {
@@ -233,15 +224,14 @@ async function register(): Promise<void> {
 }
 
 async function onCreateGame(): Promise<void> {
-  if (!session.userId || !joinCodeInput.value.trim()) {
-    $q.notify({ type: 'warning', message: 'Join-code is verplicht voor nieuw spel' });
+  if (!session.userId) {
+    $q.notify({ type: 'warning', message: 'Login is vereist' });
     return;
   }
 
   try {
-    const game = await createRemoteGame(session.userId, 'classic', joinCodeInput.value.trim());
+    const game = await createRemoteGame(session.userId, 'classic');
     pendingGameId.value = game.id;
-    pendingJoinCode.value = joinCodeInput.value.trim();
     secretDialogValue.value = '';
     secretDialogOpen.value = true;
     await loadLobbyData();
@@ -250,26 +240,8 @@ async function onCreateGame(): Promise<void> {
   }
 }
 
-async function onJoinByCode(): Promise<void> {
-  if (!session.userId || !joinCodeInput.value.trim()) {
-    $q.notify({ type: 'warning', message: 'Vul een join-code of game-id in' });
-    return;
-  }
-
-  try {
-    const gameId = await resolveRemoteGameId(joinCodeInput.value.trim());
-    pendingGameId.value = gameId;
-    pendingJoinCode.value = joinCodeInput.value.trim();
-    secretDialogValue.value = '';
-    secretDialogOpen.value = true;
-  } catch (error) {
-    $q.notify({ type: 'negative', message: `Join mislukt: ${errorMessage(error)}` });
-  }
-}
-
-function promptSecretForJoin(gameId: string, joinCode: string): void {
+function promptSecretForJoin(gameId: string): void {
   pendingGameId.value = gameId;
-  pendingJoinCode.value = joinCode;
   secretDialogValue.value = '';
   secretDialogOpen.value = true;
 }
@@ -282,8 +254,6 @@ async function confirmSecretJoin(): Promise<void> {
 
   try {
     await joinRemoteGame(pendingGameId.value, session.userId, secretDialogValue.value.trim());
-    remoteGameId.value = pendingGameId.value;
-    activeJoinCode.value = pendingJoinCode.value;
     secretDialogOpen.value = false;
     $q.notify({ type: 'positive', message: 'Deelname bevestigd' });
     await loadLobbyData();
@@ -292,9 +262,7 @@ async function confirmSecretJoin(): Promise<void> {
   }
 }
 
-function openRemoteGame(gameId: string, joinCode: string): void {
-  remoteGameId.value = gameId;
-  activeJoinCode.value = joinCode;
+function openRemoteGame(gameId: string): void {
   router.push({ name: 'game', params: { gameId } });
 }
 
