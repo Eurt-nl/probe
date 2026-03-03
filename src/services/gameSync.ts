@@ -28,6 +28,7 @@ export interface RemoteGuess {
   actor: string;
   target_player: string;
   turn_index?: number;
+  guess_at?: string;
   guess_char?: string;
   guess_word?: string;
   is_interruptive: boolean;
@@ -371,7 +372,7 @@ export async function listRemoteGuesses(gameId: string): Promise<RemoteGuess[]> 
   const records = await pb.collection(collections.guesses).getFullList({
     requestKey: null,
     filter: pb.filter('game = {:gameId}', { gameId }),
-    sort: '-id'
+    sort: '-guess_at,-id'
   });
 
   return records.map((record) => ({
@@ -381,6 +382,7 @@ export async function listRemoteGuesses(gameId: string): Promise<RemoteGuess[]> 
     turn_index: record.turn_index !== undefined && record.turn_index !== null
       ? Number(record.turn_index)
       : undefined,
+    guess_at: record.guess_at ? String(record.guess_at) : undefined,
     guess_char: record.guess_char ? String(record.guess_char) : undefined,
     guess_word: record.guess_word ? String(record.guess_word) : undefined,
     is_interruptive: Boolean(record.is_interruptive),

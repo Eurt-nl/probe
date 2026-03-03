@@ -161,6 +161,13 @@ const isOwner = computed(() => remoteGame.value?.owner === session.userId);
 const isMyTurn = computed(() => Boolean(session.userId) && remoteGame.value?.turn_player === session.userId);
 const sortedRemoteGuesses = computed(() =>
   [...remoteGuesses.value].sort((a, b) => {
+    const aGuessAt = Date.parse(a.guess_at || '');
+    const bGuessAt = Date.parse(b.guess_at || '');
+    const aGuessAtValid = Number.isFinite(aGuessAt);
+    const bGuessAtValid = Number.isFinite(bGuessAt);
+    if (aGuessAtValid && bGuessAtValid && bGuessAt !== aGuessAt) return bGuessAt - aGuessAt;
+    if (aGuessAtValid !== bGuessAtValid) return bGuessAtValid ? 1 : -1;
+
     const turnDiff = Number(b.turn_index ?? -1) - Number(a.turn_index ?? -1);
     if (turnDiff !== 0) return turnDiff;
 

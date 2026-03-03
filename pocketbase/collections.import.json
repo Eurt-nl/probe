@@ -546,12 +546,24 @@
         "pattern": "",
         "autogeneratePattern": "",
         "primaryKey": false
+      },
+      {
+        "id": "autodate50000001",
+        "name": "guess_at",
+        "type": "autodate",
+        "required": false,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "onCreate": true,
+        "onUpdate": false
       }
     ],
     "indexes": [
       "CREATE INDEX idx_probe_guesses_game ON probe_guesses (game)",
       "CREATE INDEX idx_probe_guesses_actor ON probe_guesses (actor)",
-      "CREATE INDEX idx_probe_guesses_target ON probe_guesses (target_player)"
+      "CREATE INDEX idx_probe_guesses_target ON probe_guesses (target_player)",
+      "CREATE INDEX idx_probe_guesses_guess_at ON probe_guesses (guess_at)"
     ],
     "system": false
   },
