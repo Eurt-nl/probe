@@ -152,12 +152,39 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <q-dialog v-model="finishedDialogOpen" persistent>
+      <q-card style="min-width: 420px">
+        <q-card-section>
+          <div class="text-h6">Spel afgelopen</div>
+          <div class="text-caption">Eindstand</div>
+        </q-card-section>
+        <q-card-section>
+          <q-list separator>
+            <q-item v-for="(player, index) in finalStandings" :key="`final-${player.id}`" dense>
+              <q-item-section avatar>
+                <q-badge color="primary" text-color="white" :label="String(index + 1)" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ player.display_name }}</q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-item-label>{{ player.score }} pt</q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn color="primary" label="OK" @click="onAcknowledgeFinished" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useSessionStore } from '@/stores/sessionStore';
 import type { RemoteGame, RemoteGuess, RemotePlayer } from '@/services/gameSync';
@@ -173,6 +200,7 @@ import VersionBanner from '@/components/VersionBanner.vue';
 import { useSwUpdate } from '@/services/swUpdate';
 
 const route = useRoute();
+const router = useRouter();
 const $q = useQuasar();
 const session = useSessionStore();
 const { updateApp } = useSwUpdate();
@@ -189,6 +217,8 @@ const superGuessDialogOpen = ref(false);
 const superGuessWord = ref('');
 const pendingSuperTargetUserId = ref('');
 const pendingSuperTargetName = ref('');
+const finishedDialogOpen = ref(false);
+const finishedHandled = ref(false);
 const guessLogPage = ref(1);
 const guessLogPerPage = 2;
 
@@ -231,6 +261,13 @@ const currentTurnPlayerName = computed(() => {
   if (!userId) return '-';
   return remotePlayers.value.find((player) => player.player === userId)?.display_name ?? shortId(userId);
 });
+const finalStandings = computed(() =>
+  [...remotePlayers.value].sort((a, b) => {
+    const scoreDiff = Number(b.score ?? 0) - Number(a.score ?? 0);
+    if (scoreDiff !== 0) return scoreDiff;
+    return Number(a.seat_index ?? 0) - Number(b.seat_index ?? 0);
+  })
+);
 
 function errorMessage(error: unknown): string {
   const anyError = error as {
@@ -247,6 +284,7 @@ async function refreshRemote(): Promise<void> {
   remoteGame.value = await getRemoteGame(gameId.value);
   remotePlayers.value = await listRemotePlayers(gameId.value);
   remoteGuesses.value = await listRemoteGuesses(gameId.value);
+  maybeShowFinishedDialog();
 
   if (!targetUserId.value) {
     targetUserId.value = remotePlayers.value.find((player) => player.player !== session.userId)?.player ?? '';
@@ -378,6 +416,22 @@ function openSuperGuessModal(player: RemotePlayer): void {
 
 function triggerUpdate(): void {
   void updateApp();
+}
+
+function maybeShowFinishedDialog(): void {
+  if (!isCurrentUserInGame.value) return;
+  if (remoteGame.value?.status !== 'finished') return;
+  if (finishedHandled.value) return;
+
+  guessDialogOpen.value = false;
+  superGuessDialogOpen.value = false;
+  finishedDialogOpen.value = true;
+}
+
+function onAcknowledgeFinished(): void {
+  finishedDialogOpen.value = false;
+  finishedHandled.value = true;
+  router.push({ name: 'home' });
 }
 
 watch(guessLogTotalPages, (totalPages) => {
