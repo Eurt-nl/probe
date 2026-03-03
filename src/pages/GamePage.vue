@@ -32,13 +32,13 @@
         class="q-mb-sm player-card"
         :class="`player-card--${player.seat_index % 4}`"
       >
-        <q-card-section class="row items-center no-wrap">
+        <q-card-section class="row items-center no-wrap player-row">
           <div class="player-score q-mr-md">
             <div class="text-caption">Score</div>
             <div class="text-h6">{{ player.score }}</div>
           </div>
 
-          <div class="col">
+          <div class="col player-main">
             <div class="row items-center q-gutter-sm">
               <div class="text-subtitle1">{{ player.display_name }}</div>
               <q-badge
@@ -49,22 +49,24 @@
               />
             </div>
 
-            <div class="row q-col-gutter-xs q-mt-sm">
-              <div v-for="(slot, index) in boardSlots(player)" :key="`${player.id}-${index}`" class="col-auto">
-                <q-chip
-                  square
-                  dense
-                  :color="slot ? 'white' : 'grey-3'"
-                  :text-color="slot ? 'dark' : 'grey-7'"
-                  class="slot-chip"
-                >
-                  {{ slot ?? '•' }}
-                </q-chip>
+            <div class="word-row q-mt-sm">
+              <div class="word-track">
+                <div v-for="(slot, index) in boardSlots(player)" :key="`${player.id}-${index}`" class="slot-cell">
+                  <q-chip
+                    square
+                    dense
+                    :color="slot ? 'white' : 'grey-3'"
+                    :text-color="slot ? 'dark' : 'grey-7'"
+                    class="slot-chip"
+                  >
+                    {{ slot ?? '•' }}
+                  </q-chip>
+                </div>
               </div>
             </div>
           </div>
 
-          <div class="q-ml-md row q-gutter-sm no-wrap">
+          <div class="q-ml-md row q-gutter-sm no-wrap player-actions">
             <q-btn
               v-if="canGuessOn(player)"
               color="primary"
@@ -139,7 +141,7 @@
     </div>
 
     <q-dialog v-model="guessDialogOpen" persistent>
-      <q-card style="min-width: 360px">
+      <q-card class="dialog-card">
         <q-card-section>
           <div class="text-h6">Vraag een letter</div>
           <div class="text-caption">
@@ -163,7 +165,7 @@
     </q-dialog>
 
     <q-dialog v-model="superGuessDialogOpen" persistent>
-      <q-card style="min-width: 420px">
+      <q-card class="dialog-card">
         <q-card-section>
           <div class="text-h6">Supergok</div>
           <div class="text-caption">
@@ -187,7 +189,7 @@
     </q-dialog>
 
     <q-dialog v-model="finishedDialogOpen" persistent>
-      <q-card style="min-width: 420px">
+      <q-card class="dialog-card">
         <q-card-section>
           <div class="text-h6">Spel afgelopen</div>
           <div class="text-caption">Eindstand</div>
@@ -554,9 +556,65 @@ onUnmounted(() => {
   min-width: 78px;
 }
 
+.word-row {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.word-track {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+  min-width: max-content;
+}
+
 .slot-chip {
   min-width: 28px;
   justify-content: center;
   font-weight: 600;
+  margin: 0;
+}
+
+.dialog-card {
+  width: min(92vw, 520px);
+}
+
+@media (max-width: 430px) {
+  .player-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .player-score {
+    min-width: 64px;
+    margin-right: 8px;
+  }
+
+  .player-main {
+    flex: 1 1 100%;
+    min-width: 0;
+    order: 2;
+    margin-top: 6px;
+  }
+
+  .player-actions {
+    width: 100%;
+    order: 3;
+    margin-left: 0 !important;
+    margin-top: 8px;
+    justify-content: flex-end;
+  }
+
+  .slot-chip {
+    min-width: 22px;
+    font-size: 12px;
+  }
+}
+
+@media (min-width: 760px) and (max-width: 900px) {
+  .player-actions .q-btn {
+    min-width: 96px;
+  }
 }
 </style>
