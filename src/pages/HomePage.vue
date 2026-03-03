@@ -132,7 +132,7 @@
     <q-dialog v-model="secretDialogOpen" persistent>
       <q-card style="min-width: 420px">
         <q-card-section>
-          <div class="text-h6">Geheim woord invullen</div>
+          <div class="text-h6">{{ pendingDialogMode === 'create' ? 'Nieuw spel aanmaken' : 'Deelnemen aan spel' }}</div>
           <div class="text-caption">Game ID: {{ pendingGameId || '-' }}</div>
         </q-card-section>
 
@@ -147,7 +147,11 @@
 
         <q-card-actions align="right">
           <q-btn flat label="Annuleren" v-close-popup />
-          <q-btn color="primary" label="Bevestig deelname" @click="confirmSecretJoin" />
+          <q-btn
+            color="primary"
+            :label="pendingDialogMode === 'create' ? 'Maak spel aan' : 'Bevestig deelname'"
+            @click="confirmSecretJoin"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -312,7 +316,7 @@ function promptSecretForJoin(gameId: string): void {
 }
 
 async function confirmSecretJoin(): Promise<void> {
-  if (!session.userId || !pendingGameId.value || !secretDialogValue.value.trim()) {
+  if (!session.userId || !secretDialogValue.value.trim()) {
     $q.notify({ type: 'warning', message: 'Geheim woord is verplicht' });
     return;
   }
@@ -321,6 +325,9 @@ async function confirmSecretJoin(): Promise<void> {
     if (pendingDialogMode.value === 'create') {
       const game = await createRemoteGame(session.userId, 'classic');
       pendingGameId.value = game.id;
+    } else if (!pendingGameId.value) {
+      $q.notify({ type: 'warning', message: 'Geen doelspel geselecteerd' });
+      return;
     }
 
     await joinRemoteGame(pendingGameId.value, session.userId, secretDialogValue.value.trim());
