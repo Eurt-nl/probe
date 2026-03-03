@@ -27,7 +27,7 @@
       <div class="game-layout">
         <div class="layout-left">
           <q-card
-            v-for="player in remotePlayers"
+            v-for="player in displayPlayers"
             :key="player.id"
             flat
             bordered
@@ -222,6 +222,18 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <q-dialog v-model="turnAlertOpen" persistent>
+      <q-card class="dialog-card">
+        <q-card-section>
+          <div class="text-h6">Jij bent aan zet</div>
+          <div class="text-caption">Doe nu een gok of supergok.</div>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn color="primary" label="OK" @click="turnAlertOpen = false" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -266,8 +278,11 @@ const pendingSuperTargetUserId = ref('');
 const pendingSuperTargetName = ref('');
 const finishedDialogOpen = ref(false);
 const finishedHandled = ref(false);
+const turnAlertOpen = ref(false);
 const guessLogPage = ref(1);
 const guessLogPerPage = 2;
+const previousTurnPlayerId = ref('');
+const turnWatcherInitialized = ref(false);
 
 let stopSubscription: (() => void) | null = null;
 
@@ -281,6 +296,13 @@ const canSendChat = computed(() =>
   isCurrentUserInGame.value &&
   remoteGame.value?.status === 'active'
 );
+const displayPlayers = computed(() => {
+  if (!session.userId) return remotePlayers.value;
+  const mine = remotePlayers.value.find((player) => player.player === session.userId);
+  if (!mine) return remotePlayers.value;
+  const others = remotePlayers.value.filter((player) => player.player !== session.userId);
+  return [mine, ...others];
+});
 const sortedRemoteGuesses = computed(() =>
   [...remoteGuesses.value].sort((a, b) => {
     const aGuessAt = Date.parse(a.guess_at || '');
@@ -359,6 +381,7 @@ async function refreshRemote(): Promise<void> {
   remoteGuesses.value = guesses;
   remoteChatMessages.value = chat;
   maybeShowFinishedDialog();
+  maybeShowTurnAlert();
 
   if (!targetUserId.value) {
     targetUserId.value = remotePlayers.value.find((player) => player.player !== session.userId)?.player ?? '';
@@ -528,6 +551,24 @@ function maybeShowFinishedDialog(): void {
   guessDialogOpen.value = false;
   superGuessDialogOpen.value = false;
   finishedDialogOpen.value = true;
+}
+
+function maybeShowTurnAlert(): void {
+  if (!session.userId) return;
+  if (!remoteGame.value || remoteGame.value.status !== 'active') return;
+
+  const currentTurn = String(remoteGame.value.turn_player ?? '');
+  if (!turnWatcherInitialized.value) {
+    previousTurnPlayerId.value = currentTurn;
+    turnWatcherInitialized.value = true;
+    return;
+  }
+
+  const changed = currentTurn !== previousTurnPlayerId.value;
+  previousTurnPlayerId.value = currentTurn;
+  if (changed && currentTurn === session.userId) {
+    turnAlertOpen.value = true;
+  }
 }
 
 function onAcknowledgeFinished(): void {
