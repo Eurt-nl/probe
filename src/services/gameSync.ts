@@ -337,6 +337,14 @@ export async function submitRemoteGuess(remoteGameId: string, payload: {
   target_player: string;
   guess_char: string;
 }): Promise<void> {
+  const authUserId = String((pb.authStore.model as { id?: string } | null)?.id ?? '');
+  if (!authUserId) {
+    throw new Error('Niet ingelogd');
+  }
+  if (authUserId !== String(payload.actor)) {
+    throw new Error('Sessie mismatch; herlaad de app en log opnieuw in');
+  }
+
   const latestGame = await getRemoteGame(remoteGameId);
   if (latestGame.status !== 'active') {
     throw new Error('Spel is nog niet actief');
@@ -345,9 +353,39 @@ export async function submitRemoteGuess(remoteGameId: string, payload: {
     throw new Error('Je bent niet aan de beurt');
   }
 
+  let turnId: string | undefined;
+  try {
+    const activeTurn = await pb.collection(collections.turns).getFirstListItem(
+      pb.filter('game = {:gameId} && player = {:playerId} && status = {:status}', {
+        gameId: remoteGameId,
+        playerId: payload.actor,
+        status: 'active'
+      }),
+      { requestKey: null }
+    );
+    turnId = activeTurn.id;
+  } catch {
+    // Some schemas require turn on guesses; create one lazily for this actor.
+    const existingTurns = await pb.collection(collections.turns).getFullList({
+      requestKey: null,
+      filter: pb.filter('game = {:gameId}', { gameId: remoteGameId }),
+      sort: '-turn_index'
+    });
+    const nextTurnIndex = Number(existingTurns[0]?.turn_index ?? -1) + 1;
+    const createdTurn = await pb.collection(collections.turns).create({
+      game: remoteGameId,
+      player: payload.actor,
+      turn_index: nextTurnIndex,
+      multiplier: 1,
+      status: 'active'
+    });
+    turnId = createdTurn.id;
+  }
+
   try {
     await pb.collection(collections.guesses).create({
       game: remoteGameId,
+      turn: turnId,
       actor: payload.actor,
       target_player: payload.target_player,
       guess_char: payload.guess_char.toUpperCase()[0],

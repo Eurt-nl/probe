@@ -187,10 +187,6 @@ async function main() {
 
     try {
       const record = event.record;
-      if (String(record.reason || '') !== 'Pending validation') {
-        return;
-      }
-
       await processGuess(record);
       console.log(`[referee] processed guess ${record.id}`);
     } catch (error) {
