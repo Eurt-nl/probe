@@ -97,7 +97,7 @@ export async function getRemoteGame(gameId: string): Promise<RemoteGame> {
 
 export async function listRemotePlayers(gameId: string): Promise<RemotePlayer[]> {
   const records = await pb.collection(collections.players).getFullList({
-    filter: `game = \"${gameId}\"`,
+    filter: pb.filter('game = {:gameId}', { gameId }),
     expand: 'player',
     sort: 'seat_index'
   });
@@ -118,7 +118,7 @@ export async function listRemotePlayers(gameId: string): Promise<RemotePlayer[]>
 
 export async function listLobbyGames(currentUserId: string): Promise<LobbyGameSummary[]> {
   const games = await pb.collection(collections.games).getFullList({
-    filter: 'status = "lobby"',
+    filter: pb.filter('status = {:status}', { status: 'lobby' }),
     expand: 'owner',
     sort: '-created'
   });
@@ -191,7 +191,7 @@ export async function joinRemoteGame(gameId: string, userId: string, secret: str
   const dotCount = normalizedSecret.split('').filter((char) => char === '.').length;
   const ownPlayerRecord = await pb
     .collection(collections.players)
-    .getFirstListItem(`game = \"${gameId}\" && player = \"${userId}\"`)
+    .getFirstListItem(pb.filter('game = {:gameId} && player = {:userId}', { gameId, userId }))
     .catch(() => null);
 
   if (!ownPlayerRecord) {
@@ -234,7 +234,7 @@ export async function joinRemoteGame(gameId: string, userId: string, secret: str
   }
 
   const existingSecret = await pb.collection(collections.secretWords)
-    .getFirstListItem(`game = \"${gameId}\" && player = \"${userId}\"`)
+    .getFirstListItem(pb.filter('game = {:gameId} && player = {:userId}', { gameId, userId }))
     .catch(() => null);
 
   if (existingSecret) {
@@ -286,7 +286,7 @@ export async function submitRemoteGuess(remoteGameId: string, payload: {
 
 export async function listRemoteGuesses(gameId: string): Promise<RemoteGuess[]> {
   const records = await pb.collection(collections.guesses).getFullList({
-    filter: `game = \"${gameId}\"`,
+    filter: pb.filter('game = {:gameId}', { gameId }),
     sort: '-created'
   });
 
@@ -311,12 +311,12 @@ export async function subscribeRemoteGame(gameId: string, onChange: () => void):
   unsubs.push(() => pb.collection(collections.games).unsubscribe(gameId));
 
   await pb.collection(collections.players).subscribe('*', onChange, {
-    filter: `game = \"${gameId}\"`
+    filter: pb.filter('game = {:gameId}', { gameId })
   });
   unsubs.push(() => pb.collection(collections.players).unsubscribe('*'));
 
   await pb.collection(collections.guesses).subscribe('*', onChange, {
-    filter: `game = \"${gameId}\"`
+    filter: pb.filter('game = {:gameId}', { gameId })
   });
   unsubs.push(() => pb.collection(collections.guesses).unsubscribe('*'));
 
