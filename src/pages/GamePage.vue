@@ -68,18 +68,19 @@
 
                 <div class="player-actions">
                   <q-btn
-                    v-if="canGuessOn(player)"
-                    color="primary"
-                    label="Gok"
-                    @click="openGuessModal(player)"
-                  />
-                  <q-btn
                     v-if="canSuperGuessOn(player)"
                     color="warning"
                     text-color="black"
                     icon="star"
-                    label="Supergok"
+                    round
+                    size="md"
                     @click="openSuperGuessModal(player)"
+                  />
+                  <q-btn
+                    v-if="canGuessOn(player)"
+                    color="primary"
+                    label="Gok"
+                    @click="openGuessModal(player)"
                   />
                 </div>
               </div>
