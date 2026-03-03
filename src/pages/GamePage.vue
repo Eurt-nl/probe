@@ -24,123 +24,126 @@
         </q-card-section>
       </q-card>
 
-      <q-card
-        v-for="player in remotePlayers"
-        :key="player.id"
-        flat
-        bordered
-        class="q-mb-sm player-card"
-        :class="`player-card--${player.seat_index % 4}`"
-      >
-        <q-card-section class="row items-center no-wrap player-row">
-          <div class="player-avatar q-mr-md">
-            {{ avatarText(player.display_name) }}
-          </div>
-
-          <div class="col player-main">
-            <div class="row items-center justify-between player-head q-gutter-sm">
-              <div class="row items-center q-gutter-sm">
-                <div class="text-subtitle1">{{ player.display_name }}</div>
+      <div class="game-layout">
+        <div class="layout-left">
+          <q-card
+            v-for="player in remotePlayers"
+            :key="player.id"
+            flat
+            bordered
+            class="q-mb-sm player-card"
+            :class="`player-card--${player.seat_index % 4}`"
+          >
+            <q-card-section class="player-section">
+              <div class="player-row-1">
+                <div class="player-avatar">
+                  {{ avatarText(player.display_name) }}
+                </div>
+                <div class="player-name">{{ player.display_name }}</div>
                 <q-badge
                   v-if="remoteGame?.turn_player === player.player"
                   color="primary"
                   text-color="white"
-                  label="Aan de beurt"
+                  label="Aan zet"
                 />
+                <div class="player-score-value">{{ player.score }}</div>
               </div>
-              <div class="text-subtitle1 text-weight-bold">{{ player.score }}</div>
-            </div>
 
-            <div class="word-row q-mt-xs">
-              <div class="word-track">
-                <div v-for="(slot, index) in boardSlots(player)" :key="`${player.id}-${index}`" class="slot-cell">
-                  <q-chip
-                    square
-                    dense
-                    :color="slot ? 'white' : 'grey-3'"
-                    :text-color="slot ? 'dark' : 'grey-7'"
-                    class="slot-chip"
-                  >
-                    {{ slot ?? '•' }}
-                  </q-chip>
+              <div class="player-row-2">
+                <div class="word-row">
+                  <div class="word-track">
+                    <div v-for="(slot, index) in boardSlots(player)" :key="`${player.id}-${index}`" class="slot-cell">
+                      <q-chip
+                        square
+                        dense
+                        :color="slot ? 'white' : 'grey-3'"
+                        :text-color="slot ? 'dark' : 'grey-7'"
+                        class="slot-chip"
+                      >
+                        {{ slot ?? '•' }}
+                      </q-chip>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="player-actions">
+                  <q-btn
+                    v-if="canGuessOn(player)"
+                    color="primary"
+                    label="Gok"
+                    @click="openGuessModal(player)"
+                  />
+                  <q-btn
+                    v-if="canSuperGuessOn(player)"
+                    color="warning"
+                    text-color="black"
+                    icon="star"
+                    label="Supergok"
+                    @click="openSuperGuessModal(player)"
+                  />
                 </div>
               </div>
-            </div>
-          </div>
+            </q-card-section>
+          </q-card>
+        </div>
 
-          <div class="q-ml-md row q-gutter-sm no-wrap player-actions">
-            <q-btn
-              v-if="canGuessOn(player)"
-              color="primary"
-              label="Gok"
-              @click="openGuessModal(player)"
-            />
-            <q-btn
-              v-if="canSuperGuessOn(player)"
-              color="warning"
-              text-color="black"
-              icon="star"
-              label="Supergok"
-              @click="openSuperGuessModal(player)"
-            />
-          </div>
-        </q-card-section>
-      </q-card>
+        <div class="layout-right">
+          <q-card flat bordered class="q-mb-md">
+            <q-card-section>
+              <div class="text-h6">Remote Guess log</div>
+              <q-list separator>
+                <q-item v-for="entry in pagedRemoteGuesses" :key="entry.id" dense>
+                  <q-item-section avatar>
+                    <q-icon :name="entry.success ? 'check_circle' : 'cancel'" :color="entry.success ? 'positive' : 'negative'" />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>
+                      {{ playerNameByUserId(entry.actor) }} vroeg aan {{ playerNameByUserId(entry.target_player) }} naar {{ guessText(entry) }}
+                    </q-item-label>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+              <div class="row justify-center q-mt-sm" v-if="guessLogTotalPages > 1">
+                <q-pagination v-model="guessLogPage" :max="guessLogTotalPages" :max-pages="6" direction-links />
+              </div>
+            </q-card-section>
+          </q-card>
 
-      <q-card flat bordered class="q-mt-md">
-        <q-card-section>
-          <div class="text-h6">Remote Guess log</div>
-          <q-list separator>
-            <q-item v-for="entry in pagedRemoteGuesses" :key="entry.id" dense>
-              <q-item-section avatar>
-                <q-icon :name="entry.success ? 'check_circle' : 'cancel'" :color="entry.success ? 'positive' : 'negative'" />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label>
-                  {{ playerNameByUserId(entry.actor) }} vroeg aan {{ playerNameByUserId(entry.target_player) }} naar {{ guessText(entry) }}
-                </q-item-label>
-              </q-item-section>
-            </q-item>
-          </q-list>
-          <div class="row justify-center q-mt-sm" v-if="guessLogTotalPages > 1">
-            <q-pagination v-model="guessLogPage" :max="guessLogTotalPages" :max-pages="6" direction-links />
-          </div>
-        </q-card-section>
-      </q-card>
-
-      <q-card flat bordered class="q-mt-md">
-        <q-card-section>
-          <div class="text-h6">Spelchat</div>
-          <q-list separator>
-            <q-item v-for="entry in sortedChatMessages" :key="entry.id" dense>
-              <q-item-section>
-                <q-item-label>
-                  <strong>{{ entry.actor_name }}</strong>: {{ entry.message }}
-                </q-item-label>
-                <q-item-label caption>{{ formatDateTime(entry.message_at) }}</q-item-label>
-              </q-item-section>
-            </q-item>
-          </q-list>
-          <div v-if="!sortedChatMessages.length" class="text-caption text-grey-7 q-mt-sm">
-            Nog geen chatberichten.
-          </div>
-          <div class="row q-col-gutter-sm q-mt-sm">
-            <div class="col">
-              <q-input
-                v-model="chatDraft"
-                dense
-                maxlength="500"
-                label="Typ een bericht"
-                input-class="no-zoom-input"
-                @keyup.enter="onSendChat"
-              />
-            </div>
-            <div class="col-auto">
-              <q-btn color="primary" label="Verstuur" :disable="!canSendChat || !chatDraft.trim()" @click="onSendChat" />
-            </div>
-          </div>
-        </q-card-section>
-      </q-card>
+          <q-card flat bordered>
+            <q-card-section>
+              <div class="text-h6">Spelchat</div>
+              <q-list separator>
+                <q-item v-for="entry in sortedChatMessages" :key="entry.id" dense>
+                  <q-item-section>
+                    <q-item-label>
+                      <strong>{{ entry.actor_name }}</strong>: {{ entry.message }}
+                    </q-item-label>
+                    <q-item-label caption>{{ formatDateTime(entry.message_at) }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+              <div v-if="!sortedChatMessages.length" class="text-caption text-grey-7 q-mt-sm">
+                Nog geen chatberichten.
+              </div>
+              <div class="row q-col-gutter-sm q-mt-sm">
+                <div class="col">
+                  <q-input
+                    v-model="chatDraft"
+                    dense
+                    maxlength="500"
+                    label="Typ een bericht"
+                    input-class="no-zoom-input"
+                    @keyup.enter="onSendChat"
+                  />
+                </div>
+                <div class="col-auto">
+                  <q-btn color="primary" label="Verstuur" :disable="!canSendChat || !chatDraft.trim()" @click="onSendChat" />
+                </div>
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+      </div>
     </div>
 
     <q-dialog v-model="guessDialogOpen" persistent>
@@ -569,26 +572,64 @@ onUnmounted(() => {
   border-left: 8px solid #e53935;
 }
 
+.game-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.layout-left,
+.layout-right {
+  min-width: 0;
+}
+
+.player-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.player-row-1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .player-avatar {
-  width: 46px;
-  height: 46px;
-  border-radius: 12px;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
   background: #f2f2f2;
   border: 1px solid #d5d5d5;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 18px;
+  font-size: 17px;
   color: #404040;
   flex-shrink: 0;
 }
 
-.player-head {
-  min-height: 28px;
+.player-name {
+  font-weight: 600;
+}
+
+.player-score-value {
+  margin-left: auto;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.player-row-2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .word-row {
+  flex: 1;
+  min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
@@ -608,6 +649,12 @@ onUnmounted(() => {
   margin: 0;
 }
 
+.player-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 :deep(.no-zoom-input) {
   font-size: 16px;
 }
@@ -617,30 +664,28 @@ onUnmounted(() => {
 }
 
 @media (max-width: 430px) {
-  .player-row {
-    flex-wrap: wrap;
-    align-items: flex-start;
-  }
-
   .player-avatar {
-    width: 42px;
-    height: 42px;
-    border-radius: 10px;
-    margin-right: 8px;
+    width: 38px;
+    height: 38px;
+    font-size: 15px;
   }
 
-  .player-main {
-    flex: 1 1 100%;
-    min-width: 0;
-    order: 2;
-    margin-top: 6px;
+  .player-name {
+    font-size: 14px;
+  }
+
+  .player-score-value {
+    font-size: 18px;
+  }
+
+  .player-row-2 {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
   }
 
   .player-actions {
     width: 100%;
-    order: 3;
-    margin-left: 0 !important;
-    margin-top: 8px;
     justify-content: flex-end;
   }
 
@@ -650,9 +695,18 @@ onUnmounted(() => {
   }
 }
 
-@media (min-width: 760px) and (max-width: 900px) {
-  .player-actions .q-btn {
-    min-width: 96px;
+@media (min-width: 768px) {
+  .game-layout {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .layout-left {
+    width: 60%;
+  }
+
+  .layout-right {
+    width: 40%;
   }
 }
 </style>
