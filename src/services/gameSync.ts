@@ -47,6 +47,16 @@ export interface RemoteChatMessage {
   message_at: string;
 }
 
+export interface RemoteTurn {
+  id: string;
+  game: string;
+  player: string;
+  player_name: string;
+  turn_index: number;
+  status: 'active' | 'ended';
+  activity_card_label?: string;
+}
+
 export interface LobbyGameSummary {
   id: string;
   ownerId: string;
@@ -434,6 +444,30 @@ export async function listRemoteChatMessages(gameId: string): Promise<RemoteChat
   }));
 }
 
+export async function getActiveRemoteTurn(gameId: string): Promise<RemoteTurn | null> {
+  const record = await pb.collection(collections.turns)
+    .getFirstListItem(
+      pb.filter('game = {:gameId} && status = {:status}', { gameId, status: 'active' }),
+      {
+        requestKey: null,
+        expand: 'player,activity_card',
+        sort: '-turn_index'
+      }
+    )
+    .catch(() => null);
+
+  if (!record) return null;
+  return {
+    id: record.id,
+    game: String(record.game),
+    player: String(record.player),
+    player_name: String(record.expand?.player?.display_name ?? record.expand?.player?.name ?? record.player),
+    turn_index: Number(record.turn_index ?? 0),
+    status: String(record.status ?? 'active') as RemoteTurn['status'],
+    activity_card_label: record.expand?.activity_card?.label ? String(record.expand.activity_card.label) : undefined
+  };
+}
+
 export async function sendRemoteChatMessage(gameId: string, actorUserId: string, message: string): Promise<void> {
   const trimmed = message.trim();
   if (!trimmed) {
@@ -470,6 +504,11 @@ export async function subscribeRemoteGame(gameId: string, onChange: () => void):
     filter: pb.filter('game = {:gameId}', { gameId })
   });
   unsubs.push(() => pb.collection(collections.chatMessages).unsubscribe('*'));
+
+  await pb.collection(collections.turns).subscribe('*', onChange, {
+    filter: pb.filter('game = {:gameId}', { gameId })
+  });
+  unsubs.push(() => pb.collection(collections.turns).unsubscribe('*'));
 
   return () => {
     unsubs.forEach((unsubscribe) => unsubscribe());

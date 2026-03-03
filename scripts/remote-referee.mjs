@@ -46,6 +46,62 @@ async function getPlayers(gameId) {
   });
 }
 
+async function getEnabledActivityCards() {
+  return await pb.collection('probe_activity_cards').getFullList({
+    filter: 'enabled = true',
+    sort: 'id'
+  }).catch(() => []);
+}
+
+function randomItem(items) {
+  if (!items.length) return null;
+  const idx = Math.floor(Math.random() * items.length);
+  return items[idx] ?? null;
+}
+
+async function createNextTurn(gameId, playerUserId) {
+  const existingTurns = await pb.collection('probe_turns').getFullList({
+    filter: `game = "${gameId}"`,
+    sort: '-turn_index'
+  }).catch(() => []);
+
+  for (const turn of existingTurns.filter((entry) => String(entry.status) === 'active')) {
+    await pb.collection('probe_turns').update(turn.id, { status: 'ended' }).catch(() => {});
+  }
+
+  const nextTurnIndex = Number(existingTurns[0]?.turn_index ?? -1) + 1;
+  const cards = await getEnabledActivityCards();
+  const pickedCard = randomItem(cards);
+  const payload = {
+    game: gameId,
+    player: playerUserId,
+    turn_index: nextTurnIndex,
+    multiplier: 1,
+    status: 'active'
+  };
+
+  if (pickedCard?.id) {
+    payload.activity_card = pickedCard.id;
+  }
+
+  await pb.collection('probe_turns').create(payload).catch(() => {});
+}
+
+async function ensureInitialTurnForGame(gameId) {
+  const game = await pb.collection('probe_games').getOne(gameId).catch(() => null);
+  if (!game || String(game.status) !== 'active') return;
+
+  const turns = await pb.collection('probe_turns').getFullList({
+    filter: `game = "${gameId}"`,
+    sort: '-turn_index'
+  }).catch(() => []);
+
+  if (turns.length > 0) return;
+  const turnPlayer = String(game.turn_player || '');
+  if (!turnPlayer) return;
+  await createNextTurn(gameId, turnPlayer);
+}
+
 async function getSecret(gameId, playerUserId) {
   return await pb.collection('probe_secret_words').getFirstListItem(
     `game = "${gameId}" && player = "${playerUserId}"`
@@ -237,6 +293,7 @@ async function processGuess(record) {
   const nextUser = nextPlayerUserId(players, actorUserId);
   if (nextUser) {
     await pb.collection('probe_games').update(gameId, { turn_player: nextUser });
+    await createNextTurn(gameId, nextUser);
     await createNotification(nextUser, gameId, 'Jouw beurt', 'De beurt is naar jou gegaan.');
   }
 
@@ -260,6 +317,17 @@ async function main() {
       console.log(`[referee] processed guess ${record.id}`);
     } catch (error) {
       console.error('[referee] processing error', error);
+    }
+  });
+
+  await pb.collection('probe_games').subscribe('*', async (event) => {
+    if (event.action !== 'update' && event.action !== 'create') return;
+    try {
+      const gameId = String(event.record?.id || '');
+      if (!gameId) return;
+      await ensureInitialTurnForGame(gameId);
+    } catch (error) {
+      console.error('[referee] turn init error', error);
     }
   });
 

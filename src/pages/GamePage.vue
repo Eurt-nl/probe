@@ -235,6 +235,18 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <q-dialog v-model="activityCardDialogOpen" :persistent="activityCardRequiresAck">
+      <q-card class="dialog-card">
+        <q-card-section>
+          <div class="text-h6">Activity card</div>
+          <div class="text-body2">{{ activityCardDialogText }}</div>
+        </q-card-section>
+        <q-card-actions align="right" v-if="activityCardRequiresAck">
+          <q-btn color="primary" label="OK" @click="closeActivityCardDialog" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -243,8 +255,9 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useSessionStore } from '@/stores/sessionStore';
-import type { RemoteChatMessage, RemoteGame, RemoteGuess, RemotePlayer } from '@/services/gameSync';
+import type { RemoteChatMessage, RemoteGame, RemoteGuess, RemotePlayer, RemoteTurn } from '@/services/gameSync';
 import {
+  getActiveRemoteTurn,
   getRemoteGame,
   listRemoteChatMessages,
   listRemoteGuesses,
@@ -280,12 +293,18 @@ const pendingSuperTargetName = ref('');
 const finishedDialogOpen = ref(false);
 const finishedHandled = ref(false);
 const turnAlertOpen = ref(false);
+const activityCardDialogOpen = ref(false);
+const activityCardDialogText = ref('');
+const activityCardRequiresAck = ref(false);
 const guessLogPage = ref(1);
 const guessLogPerPage = 2;
 const previousTurnPlayerId = ref('');
 const turnWatcherInitialized = ref(false);
+const previousTurnRecordId = ref('');
+const turnRecordWatcherInitialized = ref(false);
 
 let stopSubscription: (() => void) | null = null;
+let activityDialogTimer: ReturnType<typeof setTimeout> | null = null;
 
 const isOwner = computed(() => remoteGame.value?.owner === session.userId);
 const isMyTurn = computed(() => Boolean(session.userId) && remoteGame.value?.turn_player === session.userId);
@@ -375,16 +394,18 @@ async function refreshRemote(): Promise<void> {
   if (!gameId.value) return;
 
   remoteGame.value = await getRemoteGame(gameId.value);
-  const [players, guesses, chat] = await Promise.all([
+  const [players, guesses, chat, activeTurn] = await Promise.all([
     listRemotePlayers(gameId.value),
     listRemoteGuesses(gameId.value),
-    listRemoteChatMessages(gameId.value).catch(() => [])
+    listRemoteChatMessages(gameId.value).catch(() => []),
+    getActiveRemoteTurn(gameId.value).catch(() => null)
   ]);
   remotePlayers.value = players;
   remoteGuesses.value = guesses;
   remoteChatMessages.value = chat;
   maybeShowFinishedDialog();
   maybeShowTurnAlert();
+  maybeShowActivityCardDialog(activeTurn);
 
   if (!targetUserId.value) {
     targetUserId.value = remotePlayers.value.find((player) => player.player !== session.userId)?.player ?? '';
@@ -574,6 +595,45 @@ function maybeShowTurnAlert(): void {
   }
 }
 
+function closeActivityCardDialog(): void {
+  activityCardDialogOpen.value = false;
+  if (activityDialogTimer) {
+    clearTimeout(activityDialogTimer);
+    activityDialogTimer = null;
+  }
+}
+
+function maybeShowActivityCardDialog(activeTurn: RemoteTurn | null): void {
+  if (!session.userId || !isCurrentUserInGame.value || !activeTurn) return;
+
+  if (!turnRecordWatcherInitialized.value) {
+    previousTurnRecordId.value = activeTurn.id;
+    turnRecordWatcherInitialized.value = true;
+    return;
+  }
+
+  if (activeTurn.id === previousTurnRecordId.value) return;
+  previousTurnRecordId.value = activeTurn.id;
+
+  const cardLabel = activeTurn.activity_card_label ?? 'Geen kaart';
+  activityCardDialogText.value = `${activeTurn.player_name} trok: ${cardLabel}`;
+
+  const isMyTurnNow = activeTurn.player === session.userId;
+  activityCardRequiresAck.value = isMyTurnNow;
+  activityCardDialogOpen.value = true;
+
+  if (activityDialogTimer) {
+    clearTimeout(activityDialogTimer);
+    activityDialogTimer = null;
+  }
+  if (!isMyTurnNow) {
+    activityDialogTimer = setTimeout(() => {
+      activityCardDialogOpen.value = false;
+      activityDialogTimer = null;
+    }, 2500);
+  }
+}
+
 function onAcknowledgeFinished(): void {
   finishedDialogOpen.value = false;
   finishedHandled.value = true;
@@ -595,6 +655,10 @@ onUnmounted(() => {
   if (stopSubscription) {
     stopSubscription();
     stopSubscription = null;
+  }
+  if (activityDialogTimer) {
+    clearTimeout(activityDialogTimer);
+    activityDialogTimer = null;
   }
 });
 </script>
