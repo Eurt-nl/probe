@@ -120,7 +120,7 @@ export async function listLobbyGames(currentUserId: string): Promise<LobbyGameSu
   const games = await pb.collection(collections.games).getFullList({
     filter: pb.filter('status = {:status}', { status: 'lobby' }),
     expand: 'owner',
-    sort: '-created'
+    sort: '-id'
   });
 
   const summaries = await Promise.all(
@@ -150,7 +150,7 @@ export async function listActiveGameLinks(currentUserId: string): Promise<Active
   const memberships = await pb.collection(collections.players).getFullList({
     filter: pb.filter('player = {:userId}', { userId: currentUserId }),
     expand: 'game,game.owner',
-    sort: '-created'
+    sort: '-id'
   });
 
   const activeMemberships = memberships.filter((membership) => membership.expand?.game?.status === 'active');
@@ -287,7 +287,7 @@ export async function submitRemoteGuess(remoteGameId: string, payload: {
 export async function listRemoteGuesses(gameId: string): Promise<RemoteGuess[]> {
   const records = await pb.collection(collections.guesses).getFullList({
     filter: pb.filter('game = {:gameId}', { gameId }),
-    sort: '-created'
+    sort: '-id'
   });
 
   return records.map((record) => ({
