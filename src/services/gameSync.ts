@@ -337,7 +337,9 @@ export async function advanceTurn(gameId: string, nextPlayerUserId: string): Pro
 export async function submitRemoteGuess(remoteGameId: string, payload: {
   actor: string;
   target_player: string;
-  guess_char: string;
+  guess_char?: string;
+  guess_word?: string;
+  is_interruptive?: boolean;
 }): Promise<void> {
   const authUserId = String((pb.authStore.model as { id?: string } | null)?.id ?? '');
   if (!authUserId) {
@@ -351,8 +353,19 @@ export async function submitRemoteGuess(remoteGameId: string, payload: {
   if (latestGame.status !== 'active') {
     throw new Error('Spel is nog niet actief');
   }
-  if (String(latestGame.turn_player) !== String(payload.actor)) {
+  const isInterruptive = Boolean(payload.is_interruptive);
+  if (!isInterruptive && String(latestGame.turn_player) !== String(payload.actor)) {
     throw new Error('Je bent niet aan de beurt');
+  }
+
+  const normalizedChar = String(payload.guess_char ?? '').trim().toUpperCase().slice(0, 1);
+  const normalizedWord = String(payload.guess_word ?? '').trim().toUpperCase();
+  if (isInterruptive) {
+    if (!/^[A-Z]{8,12}$/.test(normalizedWord)) {
+      throw new Error('Supergok moet 8 t/m 12 letters bevatten (zonder stippen)');
+    }
+  } else if (!/^[A-Z.]$/.test(normalizedChar)) {
+    throw new Error('Gebruik 1 teken: A-Z of .');
   }
 
   try {
@@ -360,8 +373,9 @@ export async function submitRemoteGuess(remoteGameId: string, payload: {
       game: remoteGameId,
       actor: payload.actor,
       target_player: payload.target_player,
-      guess_char: payload.guess_char.toUpperCase()[0],
-      is_interruptive: 'false'
+      guess_char: isInterruptive ? '' : normalizedChar,
+      guess_word: isInterruptive ? normalizedWord : '',
+      is_interruptive: isInterruptive ? 'true' : 'false'
     });
   } catch (error) {
     throw new Error(`Gok opslaan mislukt: ${pbErrorString(error)}`);

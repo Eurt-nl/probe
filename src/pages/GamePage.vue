@@ -64,13 +64,22 @@
             </div>
           </div>
 
-          <q-btn
-            v-if="canGuessOn(player)"
-            class="q-ml-md"
-            color="primary"
-            label="Gok"
-            @click="openGuessModal(player)"
-          />
+          <div class="q-ml-md row q-gutter-sm no-wrap">
+            <q-btn
+              v-if="canGuessOn(player)"
+              color="primary"
+              label="Gok"
+              @click="openGuessModal(player)"
+            />
+            <q-btn
+              v-if="canSuperGuessOn(player)"
+              color="warning"
+              text-color="black"
+              icon="star"
+              label="Supergok"
+              @click="openSuperGuessModal(player)"
+            />
+          </div>
         </q-card-section>
       </q-card>
 
@@ -119,6 +128,30 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <q-dialog v-model="superGuessDialogOpen" persistent>
+      <q-card style="min-width: 420px">
+        <q-card-section>
+          <div class="text-h6">Supergok</div>
+          <div class="text-caption">
+            Raad het hele woord van: {{ pendingSuperTargetName || '-' }}
+          </div>
+        </q-card-section>
+        <q-card-section>
+          <q-input
+            v-model="superGuessWord"
+            label="Heel woord"
+            hint="8-12 letters, zonder stippen"
+            maxlength="12"
+            autofocus
+          />
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Annuleren" v-close-popup />
+          <q-btn color="warning" text-color="black" icon="star" label="Verstuur supergok" @click="onSubmitSuperGuess" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -152,6 +185,10 @@ const remoteGuessChar = ref('');
 const targetUserId = ref('');
 const guessDialogOpen = ref(false);
 const pendingGuessTargetName = ref('');
+const superGuessDialogOpen = ref(false);
+const superGuessWord = ref('');
+const pendingSuperTargetUserId = ref('');
+const pendingSuperTargetName = ref('');
 const guessLogPage = ref(1);
 const guessLogPerPage = 2;
 
@@ -159,6 +196,9 @@ let stopSubscription: (() => void) | null = null;
 
 const isOwner = computed(() => remoteGame.value?.owner === session.userId);
 const isMyTurn = computed(() => Boolean(session.userId) && remoteGame.value?.turn_player === session.userId);
+const isCurrentUserInGame = computed(() =>
+  Boolean(session.userId) && remotePlayers.value.some((player) => player.player === session.userId)
+);
 const sortedRemoteGuesses = computed(() =>
   [...remoteGuesses.value].sort((a, b) => {
     const aGuessAt = Date.parse(a.guess_at || '');
@@ -239,13 +279,40 @@ async function onSubmitGuess(): Promise<void> {
     await submitRemoteGuess(remoteGame.value.id, {
       actor: session.userId,
       target_player: targetUserId.value,
-      guess_char: guess
+      guess_char: guess,
+      is_interruptive: false
     });
 
     remoteGuessChar.value = '';
     guessDialogOpen.value = false;
   } catch (error) {
     $q.notify({ type: 'negative', message: `Gok versturen mislukt: ${errorMessage(error)}` });
+  }
+}
+
+async function onSubmitSuperGuess(): Promise<void> {
+  if (!remoteGame.value || !session.userId || !pendingSuperTargetUserId.value) {
+    return;
+  }
+  const word = superGuessWord.value.trim().toUpperCase();
+  if (!/^[A-Z]{8,12}$/.test(word)) {
+    $q.notify({ type: 'warning', message: 'Supergok moet 8 t/m 12 letters bevatten (zonder stippen)' });
+    return;
+  }
+
+  try {
+    await submitRemoteGuess(remoteGame.value.id, {
+      actor: session.userId,
+      target_player: pendingSuperTargetUserId.value,
+      guess_word: word,
+      is_interruptive: true
+    });
+    superGuessDialogOpen.value = false;
+    superGuessWord.value = '';
+    pendingSuperTargetUserId.value = '';
+    pendingSuperTargetName.value = '';
+  } catch (error) {
+    $q.notify({ type: 'negative', message: `Supergok versturen mislukt: ${errorMessage(error)}` });
   }
 }
 
@@ -286,12 +353,27 @@ function canGuessOn(player: RemotePlayer): boolean {
   return player.player !== session.userId;
 }
 
+function canSuperGuessOn(player: RemotePlayer): boolean {
+  if (!session.userId || !remoteGame.value) return false;
+  if (remoteGame.value.status !== 'active') return false;
+  if (!isCurrentUserInGame.value) return false;
+  return player.player !== session.userId;
+}
+
 function openGuessModal(player: RemotePlayer): void {
   if (!canGuessOn(player)) return;
   targetUserId.value = player.player;
   pendingGuessTargetName.value = player.display_name;
   remoteGuessChar.value = '';
   guessDialogOpen.value = true;
+}
+
+function openSuperGuessModal(player: RemotePlayer): void {
+  if (!canSuperGuessOn(player)) return;
+  pendingSuperTargetUserId.value = player.player;
+  pendingSuperTargetName.value = player.display_name;
+  superGuessWord.value = '';
+  superGuessDialogOpen.value = true;
 }
 
 function triggerUpdate(): void {

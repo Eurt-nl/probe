@@ -28,6 +28,10 @@ function normalizeGuess(raw) {
   return String(raw || '').trim().toUpperCase().slice(0, 1);
 }
 
+function normalizeWordGuess(raw) {
+  return String(raw || '').trim().toUpperCase().replace(/[^A-Z]/g, '');
+}
+
 function nextPlayerUserId(players, currentUserId) {
   const sorted = [...players].sort((a, b) => Number(a.seat_index) - Number(b.seat_index));
   const idx = sorted.findIndex((p) => String(p.player) === String(currentUserId));
@@ -66,6 +70,7 @@ async function processGuess(record) {
   const actorUserId = String(record.actor);
   const targetUserId = String(record.target_player);
   const guessChar = normalizeGuess(record.guess_char);
+  const isInterruptive = Boolean(record.is_interruptive);
 
   const game = await pb.collection('probe_games').getOne(gameId);
   if (String(game.status) !== 'active') {
@@ -73,15 +78,6 @@ async function processGuess(record) {
       success: 'false',
       points_delta: '0',
       reason: 'Game is not active'
-    });
-    return;
-  }
-
-  if (String(game.turn_player) !== actorUserId) {
-    await pb.collection('probe_guesses').update(record.id, {
-      success: 'false',
-      points_delta: '0',
-      reason: 'Not your turn'
     });
     return;
   }
@@ -104,6 +100,69 @@ async function processGuess(record) {
   const revealedMask = Array.isArray(target.revealed_mask)
     ? [...target.revealed_mask]
     : Array.from({ length: Number(target.secret_length || secret.length) }, () => null);
+
+  if (isInterruptive) {
+    const guessedWord = normalizeWordGuess(record.guess_word);
+    const secretWordOnly = secret.replace(/\./g, '');
+
+    if (guessedWord === secretWordOnly && guessedWord.length > 0) {
+      const pointsDelta = 100;
+      const fullyRevealedMask = secret.split('');
+
+      await pb.collection('probe_players').update(actor.id, {
+        score: Number(actor.score || 0) + pointsDelta
+      });
+
+      await pb.collection('probe_players').update(target.id, {
+        revealed_mask: fullyRevealedMask,
+        is_word_revealed: true
+      });
+
+      await pb.collection('probe_guesses').update(record.id, {
+        success: 'true',
+        points_delta: String(pointsDelta),
+        reason: 'Interruptive word guess correct (+100)'
+      });
+
+      await createNotification(actorUserId, gameId, 'Supergok goed', `Je supergok "${guessedWord}" was correct (+100).`);
+      await createNotification(targetUserId, gameId, 'Woord geraden', 'Een speler heeft jouw woord in 1 keer geraden.');
+
+      const allRevealed = players
+        .map((entry) => (String(entry.id) === String(target.id) ? { ...entry, is_word_revealed: true } : entry))
+        .every((entry) => Boolean(entry.is_word_revealed));
+
+      if (allRevealed) {
+        await pb.collection('probe_games').update(gameId, {
+          status: 'finished',
+          ended_at: new Date().toISOString()
+        });
+      }
+
+      return;
+    }
+
+    await pb.collection('probe_players').update(actor.id, {
+      score: Number(actor.score || 0) - 100
+    });
+
+    await pb.collection('probe_guesses').update(record.id, {
+      success: 'false',
+      points_delta: '-100',
+      reason: 'Interruptive word guess failed (-100)'
+    });
+
+    await createNotification(actorUserId, gameId, 'Supergok fout', `Je supergok "${guessedWord || '-'}" was fout (-100).`);
+    return;
+  }
+
+  if (String(game.turn_player) !== actorUserId) {
+    await pb.collection('probe_guesses').update(record.id, {
+      success: 'false',
+      points_delta: '0',
+      reason: 'Not your turn'
+    });
+    return;
+  }
 
   const matchingIndexes = [];
   for (let i = 0; i < secret.length; i += 1) {
