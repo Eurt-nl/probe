@@ -354,6 +354,7 @@ export async function submitRemoteGuess(remoteGameId: string, payload: {
   }
 
   let turnId: string | undefined;
+  let turnIndex = 0;
   try {
     const activeTurn = await pb.collection(collections.turns).getFirstListItem(
       pb.filter('game = {:gameId} && player = {:playerId} && status = {:status}', {
@@ -364,6 +365,7 @@ export async function submitRemoteGuess(remoteGameId: string, payload: {
       { requestKey: null }
     );
     turnId = activeTurn.id;
+    turnIndex = Number(activeTurn.turn_index ?? 0);
   } catch {
     // Some schemas require turn on guesses; create one lazily for this actor.
     const existingTurns = await pb.collection(collections.turns).getFullList({
@@ -380,12 +382,14 @@ export async function submitRemoteGuess(remoteGameId: string, payload: {
       status: 'active'
     });
     turnId = createdTurn.id;
+    turnIndex = Number(createdTurn.turn_index ?? nextTurnIndex);
   }
 
   try {
     await pb.collection(collections.guesses).create({
       game: remoteGameId,
       turn: turnId,
+      turn_index: turnIndex,
       actor: payload.actor,
       target_player: payload.target_player,
       guess_char: payload.guess_char.toUpperCase()[0],
