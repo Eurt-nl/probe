@@ -42,7 +42,8 @@ function nextPlayerUserId(players, currentUserId) {
 async function getPlayers(gameId) {
   return await pb.collection('probe_players').getFullList({
     filter: `game = "${gameId}"`,
-    sort: 'seat_index'
+    sort: 'seat_index',
+    expand: 'player'
   });
 }
 
@@ -108,17 +109,40 @@ async function getSecret(gameId, playerUserId) {
   );
 }
 
-async function createNotification(userId, gameId, title, body) {
+async function createNotification(userId, gameId, title, body, type = 'game_update') {
   await pb.collection('in_app_notifications').create({
     user: userId,
     game: gameId,
-    type: 'game_update',
+    type,
     title,
     body,
     is_read: 'false',
     sent_ntfy: 'false',
     ntfy_topic: ''
   });
+}
+
+const lastTurnNotificationKeyByGame = new Map();
+
+async function notifyTurnStart(gameId, turnPlayerUserId) {
+  const key = `${gameId}:${turnPlayerUserId}`;
+  if (lastTurnNotificationKeyByGame.get(gameId) === key) return;
+  lastTurnNotificationKeyByGame.set(gameId, key);
+
+  const players = await getPlayers(gameId);
+  const turnPlayer = players.find((entry) => String(entry.player) === String(turnPlayerUserId));
+  const turnPlayerName = String(turnPlayer?.expand?.player?.display_name || turnPlayer?.expand?.player?.name || turnPlayerUserId);
+
+  const cards = await getEnabledActivityCards();
+  const pickedCard = randomItem(cards);
+  const cardLabel = String(pickedCard?.label || 'Geen kaart');
+  const body = `${turnPlayerName} trok: ${cardLabel}`;
+
+  await Promise.all(
+    players.map((entry) =>
+      createNotification(String(entry.player), gameId, 'Activity card', body, 'turn_start').catch(() => {})
+    )
+  );
 }
 
 async function finalizeGame(gameId) {
@@ -293,7 +317,7 @@ async function processGuess(record) {
   const nextUser = nextPlayerUserId(players, actorUserId);
   if (nextUser) {
     await pb.collection('probe_games').update(gameId, { turn_player: nextUser });
-    await createNextTurn(gameId, nextUser);
+    await notifyTurnStart(gameId, nextUser);
     await createNotification(nextUser, gameId, 'Jouw beurt', 'De beurt is naar jou gegaan.');
   }
 
@@ -325,7 +349,11 @@ async function main() {
     try {
       const gameId = String(event.record?.id || '');
       if (!gameId) return;
-      await ensureInitialTurnForGame(gameId);
+      const status = String(event.record?.status || '');
+      const turnPlayer = String(event.record?.turn_player || '');
+      if (status === 'active' && turnPlayer) {
+        await notifyTurnStart(gameId, turnPlayer);
+      }
     } catch (error) {
       console.error('[referee] turn init error', error);
     }
