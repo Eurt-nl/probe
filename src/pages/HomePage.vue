@@ -66,7 +66,16 @@
                   </q-item-label>
                 </q-item-section>
                 <q-item-section side>
-                  <div class="row q-gutter-sm">
+                  <div class="row q-gutter-sm items-center">
+                    <q-btn
+                      v-if="game.ownerId === session.userId"
+                      color="negative"
+                      flat
+                      round
+                      size="sm"
+                      icon="delete"
+                      @click="onDeleteLobbyGame(game.id)"
+                    />
                     <q-btn
                       v-if="game.canJoin"
                       color="accent"
@@ -79,7 +88,7 @@
                 </q-item-section>
               </q-item>
             </q-list>
-            <div v-if="!lobbyGames.length" class="text-caption text-grey-7 q-mt-sm">Geen open spellen gevonden.</div>
+            <div v-if="!availableGames.length" class="text-caption text-grey-7 q-mt-sm">Geen open spellen gevonden.</div>
           </q-card-section>
         </q-card>
 
@@ -97,7 +106,18 @@
                   </q-item-label>
                 </q-item-section>
                 <q-item-section side>
-                  <q-btn color="primary" size="sm" label="Ga naar spel" @click="openRemoteGame(game.gameId)" />
+                  <div class="row q-gutter-sm items-center">
+                    <q-btn
+                      v-if="game.status === 'lobby' && game.ownerId === session.userId"
+                      color="negative"
+                      flat
+                      round
+                      size="sm"
+                      icon="delete"
+                      @click="onDeleteLobbyGame(game.gameId)"
+                    />
+                    <q-btn color="primary" size="sm" label="Ga naar spel" @click="openRemoteGame(game.gameId)" />
+                  </div>
                 </q-item-section>
               </q-item>
             </q-list>
@@ -144,6 +164,7 @@ import AppVersionPanel from '@/components/AppVersionPanel.vue';
 import { useSwUpdate } from '@/services/swUpdate';
 import {
   createRemoteGame,
+  deleteLobbyGame,
   joinRemoteGame,
   listActiveGameLinks,
   listLobbyGames,
@@ -162,9 +183,7 @@ const authPassword = ref('');
 
 const lobbyGames = ref<LobbyGameSummary[]>([]);
 const activeGames = ref<ActiveGameLink[]>([]);
-const availableGames = computed(() =>
-  lobbyGames.value.filter((game) => !game.hasJoined)
-);
+const availableGames = computed(() => lobbyGames.value.filter((game) => !game.hasJoined));
 
 const secretDialogOpen = ref(false);
 const secretDialogValue = ref('');
@@ -232,6 +251,19 @@ async function onCreateGame(): Promise<void> {
     await loadLobbyData();
   } catch (error) {
     $q.notify({ type: 'negative', message: `Spel aanmaken mislukt: ${errorMessage(error)}` });
+  }
+}
+
+async function onDeleteLobbyGame(gameId: string): Promise<void> {
+  if (!session.userId) return;
+  if (!window.confirm('Weet je zeker dat je dit lobby-spel wilt verwijderen?')) return;
+
+  try {
+    await deleteLobbyGame(gameId);
+    $q.notify({ type: 'positive', message: 'Lobby-spel verwijderd' });
+    await loadLobbyData();
+  } catch (error) {
+    $q.notify({ type: 'negative', message: `Verwijderen mislukt: ${errorMessage(error)}` });
   }
 }
 

@@ -48,6 +48,7 @@ export interface LobbyGameSummary {
 
 export interface ActiveGameLink {
   gameId: string;
+  ownerId: string;
   ownerName: string;
   participantCount: number;
   status: 'lobby' | 'active' | 'finished';
@@ -169,6 +170,7 @@ export async function listActiveGameLinks(currentUserId: string): Promise<Active
     const players = await listRemotePlayers(game.id).catch(() => []);
     dedup.set(game.id, {
       gameId: game.id,
+      ownerId: String(game.owner ?? ''),
       ownerName: String(game.expand?.owner?.display_name ?? game.expand?.owner?.name ?? game.owner ?? ''),
       participantCount: players.length,
       status: String(game.status ?? 'lobby') as ActiveGameLink['status']
@@ -176,6 +178,14 @@ export async function listActiveGameLinks(currentUserId: string): Promise<Active
   }
 
   return Array.from(dedup.values());
+}
+
+export async function deleteLobbyGame(gameId: string): Promise<void> {
+  const game = await getRemoteGame(gameId);
+  if (game.status !== 'lobby') {
+    throw new Error('Alleen lobby-spellen kunnen verwijderd worden');
+  }
+  await pb.collection(collections.games).delete(gameId);
 }
 
 export async function joinRemoteGame(gameId: string, userId: string, secret: string): Promise<void> {
