@@ -36,7 +36,7 @@
           <div class="player-score q-mr-md">
             <div class="text-caption">Score</div>
             <div class="text-h6">{{ player.score }}</div>
-            <div class="mobile-player-meta">
+            <div v-if="isMobileLayout" class="mobile-player-meta">
               <span class="mobile-player-name">{{ player.display_name }}</span>
               <q-badge
                 v-if="remoteGame?.turn_player === player.player"
@@ -48,7 +48,7 @@
           </div>
 
           <div class="col player-main">
-            <div class="row items-center q-gutter-sm player-title-row">
+            <div v-if="!isMobileLayout" class="row items-center q-gutter-sm player-title-row">
               <div class="text-subtitle1">{{ player.display_name }}</div>
               <q-badge
                 v-if="remoteGame?.turn_player === player.player"
@@ -277,6 +277,7 @@ let stopSubscription: (() => void) | null = null;
 
 const isOwner = computed(() => remoteGame.value?.owner === session.userId);
 const isMyTurn = computed(() => Boolean(session.userId) && remoteGame.value?.turn_player === session.userId);
+const isMobileLayout = computed(() => $q.screen.xs || $q.screen.width <= 430);
 const isCurrentUserInGame = computed(() =>
   Boolean(session.userId) && remotePlayers.value.some((player) => player.player === session.userId)
 );
@@ -577,7 +578,10 @@ onUnmounted(() => {
 }
 
 .mobile-player-meta {
-  display: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
 }
 
 .word-row {
