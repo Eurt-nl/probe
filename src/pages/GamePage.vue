@@ -72,7 +72,7 @@
                     color="warning"
                     text-color="black"
                     icon="star"
-                    round
+                    square
                     size="md"
                     @click="openSuperGuessModal(player)"
                   />
