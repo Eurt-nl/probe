@@ -245,6 +245,7 @@ import { useQuasar } from 'quasar';
 import { useSessionStore } from '@/stores/sessionStore';
 import type { RemoteChatMessage, RemoteGame, RemoteGuess, RemotePlayer, RemoteTurn } from '@/services/gameSync';
 import {
+  createRemoteTurnForCurrentPlayer,
   getActiveRemoteTurn,
   getRemoteGame,
   listRemoteChatMessages,
@@ -379,7 +380,7 @@ async function refreshRemote(): Promise<void> {
   if (!gameId.value) return;
 
   remoteGame.value = await getRemoteGame(gameId.value);
-  const [players, guesses, chat, activeTurn] = await Promise.all([
+  let [players, guesses, chat, activeTurn] = await Promise.all([
     listRemotePlayers(gameId.value),
     listRemoteGuesses(gameId.value),
     listRemoteChatMessages(gameId.value).catch(() => []),
@@ -388,6 +389,22 @@ async function refreshRemote(): Promise<void> {
   remotePlayers.value = players;
   remoteGuesses.value = guesses;
   remoteChatMessages.value = chat;
+
+  // Fallback: if no valid active turn record exists yet, let the player who is now on turn create it.
+  const localUserId = session.userId;
+  const currentTurnPlayer = String(remoteGame.value.turn_player ?? '');
+  const localIsParticipant = Boolean(localUserId) && players.some((player) => player.player === localUserId);
+  const activeTurnMatchesGame = Boolean(activeTurn && activeTurn.player === currentTurnPlayer);
+  if (
+    remoteGame.value.status === 'active' &&
+    localIsParticipant &&
+    localUserId === currentTurnPlayer &&
+    !activeTurnMatchesGame
+  ) {
+    await createRemoteTurnForCurrentPlayer(gameId.value, currentTurnPlayer).catch(() => {});
+    activeTurn = await getActiveRemoteTurn(gameId.value).catch(() => activeTurn);
+  }
+
   maybeShowFinishedDialog();
   maybeShowActivityCardDialog(activeTurn);
 
@@ -575,12 +592,17 @@ function maybeShowActivityCardDialog(activeTurn: RemoteTurn | null): void {
   if (!turnRecordWatcherInitialized.value) {
     previousTurnRecordId.value = activeTurn.id;
     turnRecordWatcherInitialized.value = true;
+    openActivityCardDialog(activeTurn);
     return;
   }
 
   if (activeTurn.id === previousTurnRecordId.value) return;
   previousTurnRecordId.value = activeTurn.id;
 
+  openActivityCardDialog(activeTurn);
+}
+
+function openActivityCardDialog(activeTurn: RemoteTurn): void {
   const cardLabel = activeTurn.activity_card_label ?? 'Geen kaart';
   activityCardDialogText.value = `${activeTurn.player_name} trok: ${cardLabel}`;
 

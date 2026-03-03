@@ -468,6 +468,58 @@ export async function getActiveRemoteTurn(gameId: string): Promise<RemoteTurn | 
   };
 }
 
+export async function createRemoteTurnForCurrentPlayer(gameId: string, turnPlayerId: string): Promise<void> {
+  const game = await getRemoteGame(gameId);
+  if (game.status !== 'active') return;
+  if (String(game.turn_player) !== String(turnPlayerId)) return;
+
+  const activeTurn = await pb.collection(collections.turns)
+    .getFirstListItem(
+      pb.filter('game = {:gameId} && status = {:status}', { gameId, status: 'active' }),
+      { requestKey: null }
+    )
+    .catch(() => null);
+
+  if (activeTurn && String(activeTurn.player) === String(turnPlayerId)) {
+    return;
+  }
+
+  const turnRecords = await pb.collection(collections.turns).getFullList({
+    requestKey: null,
+    filter: pb.filter('game = {:gameId}', { gameId }),
+    sort: '-turn_index'
+  });
+
+  for (const turn of turnRecords.filter((record) => String(record.status) === 'active')) {
+    await pb.collection(collections.turns).update(turn.id, { status: 'ended' }).catch(() => {});
+  }
+
+  const enabledCards = await pb.collection(collections.activityDeck).getFullList({
+    requestKey: null,
+    filter: pb.filter('enabled = {:enabled}', { enabled: true }),
+    sort: 'id'
+  }).catch(() => []);
+
+  const pickedCard = enabledCards.length
+    ? enabledCards[Math.floor(Math.random() * enabledCards.length)]
+    : null;
+
+  const nextTurnIndex = Number(turnRecords[0]?.turn_index ?? -1) + 1;
+  const payload: Record<string, string | number> = {
+    game: gameId,
+    player: turnPlayerId,
+    turn_index: nextTurnIndex,
+    multiplier: 1,
+    status: 'active'
+  };
+
+  if (pickedCard?.id) {
+    payload.activity_card = pickedCard.id;
+  }
+
+  await pb.collection(collections.turns).create(payload);
+}
+
 export async function sendRemoteChatMessage(gameId: string, actorUserId: string, message: string): Promise<void> {
   const trimmed = message.trim();
   if (!trimmed) {
