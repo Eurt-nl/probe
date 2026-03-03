@@ -517,7 +517,27 @@ export async function createRemoteTurnForCurrentPlayer(gameId: string, turnPlaye
     payload.activity_card = pickedCard.id;
   }
 
-  await pb.collection(collections.turns).create(payload);
+  try {
+    await pb.collection(collections.turns).create(payload);
+  } catch (error) {
+    const message = pbErrorString(error);
+    if (!message.includes('"turn_index"')) {
+      throw error;
+    }
+
+    // Some PB setups behave stricter with numeric parsing in create payloads.
+    const stringPayload: Record<string, string> = {
+      game: gameId,
+      player: turnPlayerId,
+      turn_index: String(nextTurnIndex),
+      multiplier: '1',
+      status: 'active'
+    };
+    if (pickedCard?.id) {
+      stringPayload.activity_card = pickedCard.id;
+    }
+    await pb.collection(collections.turns).create(stringPayload);
+  }
 }
 
 export async function sendRemoteChatMessage(gameId: string, actorUserId: string, message: string): Promise<void> {
