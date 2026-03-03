@@ -161,9 +161,17 @@ const isOwner = computed(() => remoteGame.value?.owner === session.userId);
 const isMyTurn = computed(() => Boolean(session.userId) && remoteGame.value?.turn_player === session.userId);
 const sortedRemoteGuesses = computed(() =>
   [...remoteGuesses.value].sort((a, b) => {
-    const aKey = a.created || a.id;
-    const bKey = b.created || b.id;
-    return bKey.localeCompare(aKey);
+    const turnDiff = Number(b.turn_index ?? -1) - Number(a.turn_index ?? -1);
+    if (turnDiff !== 0) return turnDiff;
+
+    const aTime = Date.parse(a.created || '');
+    const bTime = Date.parse(b.created || '');
+    const aValid = Number.isFinite(aTime);
+    const bValid = Number.isFinite(bTime);
+    if (aValid && bValid && bTime !== aTime) return bTime - aTime;
+    if (aValid !== bValid) return bValid ? 1 : -1;
+
+    return b.id.localeCompare(a.id);
   })
 );
 const guessLogTotalPages = computed(() => Math.max(1, Math.ceil(sortedRemoteGuesses.value.length / guessLogPerPage)));

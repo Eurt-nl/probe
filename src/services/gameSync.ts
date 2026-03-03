@@ -27,6 +27,7 @@ export interface RemoteGuess {
   id: string;
   actor: string;
   target_player: string;
+  turn_index?: number;
   guess_char?: string;
   guess_word?: string;
   is_interruptive: boolean;
@@ -377,13 +378,16 @@ export async function listRemoteGuesses(gameId: string): Promise<RemoteGuess[]> 
     id: record.id,
     actor: String(record.actor),
     target_player: String(record.target_player),
+    turn_index: record.turn_index !== undefined && record.turn_index !== null
+      ? Number(record.turn_index)
+      : undefined,
     guess_char: record.guess_char ? String(record.guess_char) : undefined,
     guess_word: record.guess_word ? String(record.guess_word) : undefined,
     is_interruptive: Boolean(record.is_interruptive),
     success: Boolean(record.success),
     points_delta: Number(record.points_delta ?? 0),
     reason: record.reason ? String(record.reason) : undefined,
-    created: String(record.created)
+    created: record.created ? String(record.created) : ''
   }));
 }
 
