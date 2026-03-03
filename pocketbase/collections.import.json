@@ -673,11 +673,23 @@
         "pattern": "",
         "autogeneratePattern": "",
         "primaryKey": false
+      },
+      {
+        "id": "autodate60000001",
+        "name": "sent_at",
+        "type": "autodate",
+        "required": false,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "onCreate": true,
+        "onUpdate": false
       }
     ],
     "indexes": [
       "CREATE INDEX idx_inapp_user_read ON in_app_notifications (user, is_read)",
-      "CREATE INDEX idx_inapp_game ON in_app_notifications (game)"
+      "CREATE INDEX idx_inapp_game ON in_app_notifications (game)",
+      "CREATE INDEX idx_inapp_turnstart_sent_at ON in_app_notifications (type, sent_at)"
     ],
     "system": false
   },

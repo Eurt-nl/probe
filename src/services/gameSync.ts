@@ -546,15 +546,25 @@ export async function createRemoteTurnForCurrentPlayer(gameId: string, turnPlaye
 }
 
 export async function getLatestTurnNotification(gameId: string): Promise<RemoteTurnNotification | null> {
-  const record = await pb.collection(collections.notifications)
+  let record = await pb.collection(collections.notifications)
     .getFirstListItem(
       pb.filter('game = {:gameId} && type = {:type}', { gameId, type: 'turn_start' }),
       {
         requestKey: null,
-        sort: '-created'
+        sort: '-sent_at,-id'
       }
     )
     .catch(() => null);
+
+  // Backward compatible fallback for environments that don't yet have sent_at.
+  if (!record) {
+    record = await pb.collection(collections.notifications)
+      .getFirstListItem(
+        pb.filter('game = {:gameId} && type = {:type}', { gameId, type: 'turn_start' }),
+        { requestKey: null }
+      )
+      .catch(() => null);
+  }
 
   if (!record) return null;
   return {
