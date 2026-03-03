@@ -65,10 +65,10 @@
           </div>
 
           <q-btn
+            v-if="canGuessOn(player)"
             class="q-ml-md"
             color="primary"
             label="Gok"
-            :disable="!canGuessOn(player)"
             @click="openGuessModal(player)"
           />
         </q-card-section>
