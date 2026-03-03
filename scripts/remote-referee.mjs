@@ -65,6 +65,22 @@ async function createNotification(userId, gameId, title, body) {
   });
 }
 
+async function finalizeGame(gameId) {
+  await pb.collection('probe_games').update(gameId, {
+    status: 'finished',
+    ended_at: new Date().toISOString()
+  });
+
+  const chatMessages = await pb.collection('probe_chat_messages').getFullList({
+    filter: `game = "${gameId}"`,
+    sort: '-id'
+  }).catch(() => []);
+
+  for (const message of chatMessages) {
+    await pb.collection('probe_chat_messages').delete(message.id).catch(() => {});
+  }
+}
+
 async function processGuess(record) {
   const gameId = String(record.game);
   const actorUserId = String(record.actor);
@@ -132,10 +148,7 @@ async function processGuess(record) {
         .every((entry) => Boolean(entry.is_word_revealed));
 
       if (allRevealed) {
-        await pb.collection('probe_games').update(gameId, {
-          status: 'finished',
-          ended_at: new Date().toISOString()
-        });
+        await finalizeGame(gameId);
       }
 
       return;
@@ -208,10 +221,7 @@ async function processGuess(record) {
       .every((entry) => Boolean(entry.is_word_revealed));
 
     if (allRevealed) {
-      await pb.collection('probe_games').update(gameId, {
-        status: 'finished',
-        ended_at: new Date().toISOString()
-      });
+      await finalizeGame(gameId);
     }
 
     return;

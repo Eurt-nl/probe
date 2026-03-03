@@ -811,5 +811,74 @@
       "CREATE INDEX idx_app_versions_is_latest ON app_versions (is_latest)"
     ],
     "system": false
+  },
+  {
+    "id": "pbc_1000000009",
+    "listRule": "@request.auth.id != '' && game.probe_players_via_game.player ?= @request.auth.id",
+    "viewRule": "@request.auth.id != '' && game.probe_players_via_game.player ?= @request.auth.id",
+    "createRule": "@request.auth.id != '' && actor = @request.auth.id && game.probe_players_via_game.player ?= @request.auth.id && game.status != 'finished'",
+    "updateRule": null,
+    "deleteRule": null,
+    "name": "probe_chat_messages",
+    "type": "base",
+    "fields": [
+      {
+        "id": "relation900001",
+        "name": "game",
+        "type": "relation",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "collectionId": "pbc_1000000001",
+        "cascadeDelete": true,
+        "minSelect": 0,
+        "maxSelect": 1
+      },
+      {
+        "id": "relation900002",
+        "name": "actor",
+        "type": "relation",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "collectionId": "_pb_users_auth_",
+        "cascadeDelete": false,
+        "minSelect": 0,
+        "maxSelect": 1
+      },
+      {
+        "id": "text900000001",
+        "name": "message",
+        "type": "text",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "min": 1,
+        "max": 500,
+        "pattern": "",
+        "autogeneratePattern": "",
+        "primaryKey": false
+      },
+      {
+        "id": "autodate90000001",
+        "name": "message_at",
+        "type": "autodate",
+        "required": false,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "onCreate": true,
+        "onUpdate": false
+      }
+    ],
+    "indexes": [
+      "CREATE INDEX idx_probe_chat_messages_game ON probe_chat_messages (game)",
+      "CREATE INDEX idx_probe_chat_messages_actor ON probe_chat_messages (actor)",
+      "CREATE INDEX idx_probe_chat_messages_message_at ON probe_chat_messages (message_at)"
+    ],
+    "system": false
   }
 ]

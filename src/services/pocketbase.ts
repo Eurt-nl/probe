@@ -15,6 +15,7 @@ export const collections = {
   secretWords: 'probe_secret_words',
   turns: 'probe_turns',
   guesses: 'probe_guesses',
+  chatMessages: 'probe_chat_messages',
   activityDeck: 'probe_activity_cards',
   appVersions: 'app_versions',
   notifications: 'in_app_notifications'

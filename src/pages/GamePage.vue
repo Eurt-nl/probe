@@ -103,6 +103,39 @@
           </div>
         </q-card-section>
       </q-card>
+
+      <q-card flat bordered class="q-mt-md">
+        <q-card-section>
+          <div class="text-h6">Spelchat</div>
+          <q-list separator>
+            <q-item v-for="entry in sortedChatMessages" :key="entry.id" dense>
+              <q-item-section>
+                <q-item-label>
+                  <strong>{{ entry.actor_name }}</strong>: {{ entry.message }}
+                </q-item-label>
+                <q-item-label caption>{{ formatDateTime(entry.message_at) }}</q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
+          <div v-if="!sortedChatMessages.length" class="text-caption text-grey-7 q-mt-sm">
+            Nog geen chatberichten.
+          </div>
+          <div class="row q-col-gutter-sm q-mt-sm">
+            <div class="col">
+              <q-input
+                v-model="chatDraft"
+                dense
+                maxlength="500"
+                label="Typ een bericht"
+                @keyup.enter="onSendChat"
+              />
+            </div>
+            <div class="col-auto">
+              <q-btn color="primary" label="Verstuur" :disable="!canSendChat || !chatDraft.trim()" @click="onSendChat" />
+            </div>
+          </div>
+        </q-card-section>
+      </q-card>
     </div>
 
     <q-dialog v-model="guessDialogOpen" persistent>
@@ -187,11 +220,13 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useSessionStore } from '@/stores/sessionStore';
-import type { RemoteGame, RemoteGuess, RemotePlayer } from '@/services/gameSync';
+import type { RemoteChatMessage, RemoteGame, RemoteGuess, RemotePlayer } from '@/services/gameSync';
 import {
   getRemoteGame,
+  listRemoteChatMessages,
   listRemoteGuesses,
   listRemotePlayers,
+  sendRemoteChatMessage,
   startRemoteGame,
   submitRemoteGuess,
   subscribeRemoteGame
@@ -209,7 +244,9 @@ const gameId = computed(() => String(route.params.gameId ?? ''));
 const remoteGame = ref<RemoteGame | null>(null);
 const remotePlayers = ref<RemotePlayer[]>([]);
 const remoteGuesses = ref<RemoteGuess[]>([]);
+const remoteChatMessages = ref<RemoteChatMessage[]>([]);
 const remoteGuessChar = ref('');
+const chatDraft = ref('');
 const targetUserId = ref('');
 const guessDialogOpen = ref(false);
 const pendingGuessTargetName = ref('');
@@ -228,6 +265,11 @@ const isOwner = computed(() => remoteGame.value?.owner === session.userId);
 const isMyTurn = computed(() => Boolean(session.userId) && remoteGame.value?.turn_player === session.userId);
 const isCurrentUserInGame = computed(() =>
   Boolean(session.userId) && remotePlayers.value.some((player) => player.player === session.userId)
+);
+const canSendChat = computed(() =>
+  Boolean(session.userId) &&
+  isCurrentUserInGame.value &&
+  remoteGame.value?.status === 'active'
 );
 const sortedRemoteGuesses = computed(() =>
   [...remoteGuesses.value].sort((a, b) => {
@@ -256,6 +298,17 @@ const pagedRemoteGuesses = computed(() => {
   const start = (guessLogPage.value - 1) * guessLogPerPage;
   return sortedRemoteGuesses.value.slice(start, start + guessLogPerPage);
 });
+const sortedChatMessages = computed(() =>
+  [...remoteChatMessages.value].sort((a, b) => {
+    const aTime = Date.parse(a.message_at || '');
+    const bTime = Date.parse(b.message_at || '');
+    const aValid = Number.isFinite(aTime);
+    const bValid = Number.isFinite(bTime);
+    if (aValid && bValid && bTime !== aTime) return bTime - aTime;
+    if (aValid !== bValid) return bValid ? 1 : -1;
+    return b.id.localeCompare(a.id);
+  })
+);
 const currentTurnPlayerName = computed(() => {
   const userId = remoteGame.value?.turn_player;
   if (!userId) return '-';
@@ -282,12 +335,28 @@ async function refreshRemote(): Promise<void> {
   if (!gameId.value) return;
 
   remoteGame.value = await getRemoteGame(gameId.value);
-  remotePlayers.value = await listRemotePlayers(gameId.value);
-  remoteGuesses.value = await listRemoteGuesses(gameId.value);
+  const [players, guesses, chat] = await Promise.all([
+    listRemotePlayers(gameId.value),
+    listRemoteGuesses(gameId.value),
+    listRemoteChatMessages(gameId.value).catch(() => [])
+  ]);
+  remotePlayers.value = players;
+  remoteGuesses.value = guesses;
+  remoteChatMessages.value = chat;
   maybeShowFinishedDialog();
 
   if (!targetUserId.value) {
     targetUserId.value = remotePlayers.value.find((player) => player.player !== session.userId)?.player ?? '';
+  }
+}
+
+async function onSendChat(): Promise<void> {
+  if (!remoteGame.value || !session.userId || !canSendChat.value) return;
+  try {
+    await sendRemoteChatMessage(remoteGame.value.id, session.userId, chatDraft.value);
+    chatDraft.value = '';
+  } catch (error) {
+    $q.notify({ type: 'negative', message: `Chat versturen mislukt: ${errorMessage(error)}` });
   }
 }
 
@@ -416,6 +485,17 @@ function openSuperGuessModal(player: RemotePlayer): void {
 
 function triggerUpdate(): void {
   void updateApp();
+}
+
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const yyyy = String(date.getFullYear());
+  const hh = String(date.getHours()).padStart(2, '0');
+  const min = String(date.getMinutes()).padStart(2, '0');
+  return `${dd}-${mm}-${yyyy} ${hh}:${min}`;
 }
 
 function maybeShowFinishedDialog(): void {

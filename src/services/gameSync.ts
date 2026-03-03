@@ -38,6 +38,15 @@ export interface RemoteGuess {
   created: string;
 }
 
+export interface RemoteChatMessage {
+  id: string;
+  game: string;
+  actor: string;
+  actor_name: string;
+  message: string;
+  message_at: string;
+}
+
 export interface LobbyGameSummary {
   id: string;
   ownerId: string;
@@ -407,6 +416,40 @@ export async function listRemoteGuesses(gameId: string): Promise<RemoteGuess[]> 
   }));
 }
 
+export async function listRemoteChatMessages(gameId: string): Promise<RemoteChatMessage[]> {
+  const records = await pb.collection(collections.chatMessages).getFullList({
+    requestKey: null,
+    filter: pb.filter('game = {:gameId}', { gameId }),
+    expand: 'actor',
+    sort: '-message_at,-id'
+  });
+
+  return records.map((record) => ({
+    id: record.id,
+    game: String(record.game),
+    actor: String(record.actor),
+    actor_name: String(record.expand?.actor?.display_name ?? record.expand?.actor?.name ?? record.actor),
+    message: String(record.message ?? ''),
+    message_at: String(record.message_at ?? '')
+  }));
+}
+
+export async function sendRemoteChatMessage(gameId: string, actorUserId: string, message: string): Promise<void> {
+  const trimmed = message.trim();
+  if (!trimmed) {
+    throw new Error('Chatbericht is leeg');
+  }
+  if (trimmed.length > 500) {
+    throw new Error('Chatbericht is te lang (max 500 tekens)');
+  }
+
+  await pb.collection(collections.chatMessages).create({
+    game: gameId,
+    actor: actorUserId,
+    message: trimmed
+  });
+}
+
 export async function subscribeRemoteGame(gameId: string, onChange: () => void): Promise<() => void> {
   const unsubs: Array<() => void> = [];
 
@@ -422,6 +465,11 @@ export async function subscribeRemoteGame(gameId: string, onChange: () => void):
     filter: pb.filter('game = {:gameId}', { gameId })
   });
   unsubs.push(() => pb.collection(collections.guesses).unsubscribe('*'));
+
+  await pb.collection(collections.chatMessages).subscribe('*', onChange, {
+    filter: pb.filter('game = {:gameId}', { gameId })
+  });
+  unsubs.push(() => pb.collection(collections.chatMessages).unsubscribe('*'));
 
   return () => {
     unsubs.forEach((unsubscribe) => unsubscribe());
