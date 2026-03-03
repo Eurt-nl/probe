@@ -298,10 +298,12 @@ const canSendChat = computed(() =>
 );
 const displayPlayers = computed(() => {
   if (!session.userId) return remotePlayers.value;
-  const mine = remotePlayers.value.find((player) => player.player === session.userId);
-  if (!mine) return remotePlayers.value;
-  const others = remotePlayers.value.filter((player) => player.player !== session.userId);
-  return [mine, ...others];
+  const startIndex = remotePlayers.value.findIndex((player) => player.player === session.userId);
+  if (startIndex < 0) return remotePlayers.value;
+  return [
+    ...remotePlayers.value.slice(startIndex),
+    ...remotePlayers.value.slice(0, startIndex)
+  ];
 });
 const sortedRemoteGuesses = computed(() =>
   [...remoteGuesses.value].sort((a, b) => {
