@@ -36,10 +36,19 @@
           <div class="player-score q-mr-md">
             <div class="text-caption">Score</div>
             <div class="text-h6">{{ player.score }}</div>
+            <div class="mobile-player-meta">
+              <span class="mobile-player-name">{{ player.display_name }}</span>
+              <q-badge
+                v-if="remoteGame?.turn_player === player.player"
+                color="primary"
+                text-color="white"
+                label="Aan de beurt"
+              />
+            </div>
           </div>
 
           <div class="col player-main">
-            <div class="row items-center q-gutter-sm">
+            <div class="row items-center q-gutter-sm player-title-row">
               <div class="text-subtitle1">{{ player.display_name }}</div>
               <q-badge
                 v-if="remoteGame?.turn_player === player.player"
@@ -567,6 +576,10 @@ onUnmounted(() => {
   min-width: 78px;
 }
 
+.mobile-player-meta {
+  display: none;
+}
+
 .word-row {
   overflow-x: auto;
   overflow-y: hidden;
@@ -604,6 +617,23 @@ onUnmounted(() => {
   .player-score {
     min-width: 64px;
     margin-right: 8px;
+  }
+
+  .player-title-row {
+    display: none;
+  }
+
+  .mobile-player-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+  }
+
+  .mobile-player-name {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.2;
   }
 
   .player-main {
