@@ -224,18 +224,6 @@
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="turnAlertOpen" persistent>
-      <q-card class="dialog-card">
-        <q-card-section>
-          <div class="text-h6">Jij bent aan zet</div>
-          <div class="text-caption">Doe nu een gok of supergok.</div>
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn color="primary" label="OK" @click="turnAlertOpen = false" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
     <q-dialog v-model="activityCardDialogOpen" :persistent="activityCardRequiresAck">
       <q-card class="dialog-card">
         <q-card-section>
@@ -292,14 +280,11 @@ const pendingSuperTargetUserId = ref('');
 const pendingSuperTargetName = ref('');
 const finishedDialogOpen = ref(false);
 const finishedHandled = ref(false);
-const turnAlertOpen = ref(false);
 const activityCardDialogOpen = ref(false);
 const activityCardDialogText = ref('');
 const activityCardRequiresAck = ref(false);
 const guessLogPage = ref(1);
 const guessLogPerPage = 2;
-const previousTurnPlayerId = ref('');
-const turnWatcherInitialized = ref(false);
 const previousTurnRecordId = ref('');
 const turnRecordWatcherInitialized = ref(false);
 
@@ -404,7 +389,6 @@ async function refreshRemote(): Promise<void> {
   remoteGuesses.value = guesses;
   remoteChatMessages.value = chat;
   maybeShowFinishedDialog();
-  maybeShowTurnAlert();
   maybeShowActivityCardDialog(activeTurn);
 
   if (!targetUserId.value) {
@@ -575,24 +559,6 @@ function maybeShowFinishedDialog(): void {
   guessDialogOpen.value = false;
   superGuessDialogOpen.value = false;
   finishedDialogOpen.value = true;
-}
-
-function maybeShowTurnAlert(): void {
-  if (!session.userId) return;
-  if (!remoteGame.value || remoteGame.value.status !== 'active') return;
-
-  const currentTurn = String(remoteGame.value.turn_player ?? '');
-  if (!turnWatcherInitialized.value) {
-    previousTurnPlayerId.value = currentTurn;
-    turnWatcherInitialized.value = true;
-    return;
-  }
-
-  const changed = currentTurn !== previousTurnPlayerId.value;
-  previousTurnPlayerId.value = currentTurn;
-  if (changed && currentTurn === session.userId) {
-    turnAlertOpen.value = true;
-  }
 }
 
 function closeActivityCardDialog(): void {
