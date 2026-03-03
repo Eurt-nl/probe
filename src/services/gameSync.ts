@@ -60,7 +60,39 @@ function fakeHash(secret: string): string {
 }
 
 function normalizeSecret(secret: string): string {
-  return secret.trim().toUpperCase().replace(/[^A-Z.]/g, '').slice(0, 12);
+  const cleaned = secret.trim().toUpperCase();
+  if (!cleaned.length) {
+    throw new Error('Vul een geheim woord in van 8 t/m 12 letters');
+  }
+  if (!/^[A-Z.]+$/.test(cleaned)) {
+    throw new Error('Gebruik alleen letters (A-Z) en optioneel stippen (.)');
+  }
+  if (!/^\.*[A-Z]+\.*$/.test(cleaned)) {
+    throw new Error('Stippen mogen alleen voor of na het woord staan');
+  }
+
+  const letterCount = cleaned.replace(/\./g, '').length;
+  if (letterCount < 8) {
+    throw new Error('Geheim woord te kort: minimaal 8 letters');
+  }
+  if (letterCount > 12) {
+    throw new Error('Geheim woord te lang: maximaal 12 letters');
+  }
+
+  const dotCount = cleaned.length - letterCount;
+  if (dotCount > 4) {
+    throw new Error('Je mag maximaal 4 stippen gebruiken');
+  }
+  if (cleaned.length > 12) {
+    throw new Error('Totaal (letters + stippen) mag maximaal 12 tekens zijn');
+  }
+
+  // Probe gebruikt altijd 12 posities; ontbrekende posities vullen we met dots op.
+  const missing = 12 - cleaned.length;
+  if (dotCount + missing > 4) {
+    throw new Error('Met dit woord zou je meer dan 4 stippen nodig hebben');
+  }
+  return `${cleaned}${'.'.repeat(missing)}`;
 }
 
 function pbErrorString(error: unknown): string {

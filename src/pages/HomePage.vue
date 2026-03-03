@@ -140,7 +140,7 @@
           <q-input
             v-model="secretDialogValue"
             label="Geheim woord"
-            hint="Max 12 chars, dots met ."
+            hint="8-12 letters, max 4 stippen (.) en altijd totaal 12 tekens"
             maxlength="12"
           />
         </q-card-section>
@@ -317,7 +317,7 @@ function promptSecretForJoin(gameId: string): void {
 
 async function confirmSecretJoin(): Promise<void> {
   if (!session.userId || !secretDialogValue.value.trim()) {
-    $q.notify({ type: 'warning', message: 'Geheim woord is verplicht' });
+    $q.notify({ type: 'warning', message: 'Vul een woord in met 8 t/m 12 letters' });
     return;
   }
 
