@@ -50,6 +50,7 @@ export interface ActiveGameLink {
   gameId: string;
   ownerName: string;
   participantCount: number;
+  status: 'lobby' | 'active' | 'finished';
 }
 
 function fakeHash(secret: string): string {
@@ -153,7 +154,11 @@ export async function listActiveGameLinks(currentUserId: string): Promise<Active
     sort: '-id'
   });
 
-  const activeMemberships = memberships.filter((membership) => membership.expand?.game?.status === 'active');
+  // Show all joined games that are still relevant in lobby/home context.
+  const activeMemberships = memberships.filter((membership) => {
+    const status = String(membership.expand?.game?.status ?? '');
+    return status === 'lobby' || status === 'active';
+  });
   const dedup = new Map<string, ActiveGameLink>();
 
   for (const membership of activeMemberships) {
@@ -165,7 +170,8 @@ export async function listActiveGameLinks(currentUserId: string): Promise<Active
     dedup.set(game.id, {
       gameId: game.id,
       ownerName: String(game.expand?.owner?.display_name ?? game.expand?.owner?.name ?? game.owner ?? ''),
-      participantCount: players.length
+      participantCount: players.length,
+      status: String(game.status ?? 'lobby') as ActiveGameLink['status']
     });
   }
 

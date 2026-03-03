@@ -56,7 +56,7 @@
           <q-card-section>
             <div class="text-h6">Beschikbare spellen</div>
             <q-list separator>
-              <q-item v-for="game in lobbyGames" :key="game.id">
+              <q-item v-for="game in availableGames" :key="game.id">
                 <q-item-section>
                   <q-item-label>
                     Game ID: <strong>{{ game.id }}</strong>
@@ -68,15 +68,7 @@
                 <q-item-section side>
                   <div class="row q-gutter-sm">
                     <q-btn
-                      v-if="game.hasJoined"
-                      color="primary"
-                      outline
-                      size="sm"
-                      label="Open"
-                      @click="openRemoteGame(game.id)"
-                    />
-                    <q-btn
-                      v-else-if="game.canJoin"
+                      v-if="game.canJoin"
                       color="accent"
                       size="sm"
                       label="Neem deel"
@@ -101,7 +93,7 @@
                     Game ID: <strong>{{ game.gameId }}</strong>
                   </q-item-label>
                   <q-item-label caption>
-                    Owner: {{ game.ownerName }} • {{ game.participantCount }} spelers
+                    Owner: {{ game.ownerName }} • {{ game.participantCount }} spelers • status: {{ game.status }}
                   </q-item-label>
                 </q-item-section>
                 <q-item-section side>
@@ -143,7 +135,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useSessionStore } from '@/stores/sessionStore';
@@ -170,6 +162,9 @@ const authPassword = ref('');
 
 const lobbyGames = ref<LobbyGameSummary[]>([]);
 const activeGames = ref<ActiveGameLink[]>([]);
+const availableGames = computed(() =>
+  lobbyGames.value.filter((game) => !game.hasJoined)
+);
 
 const secretDialogOpen = ref(false);
 const secretDialogValue = ref('');
