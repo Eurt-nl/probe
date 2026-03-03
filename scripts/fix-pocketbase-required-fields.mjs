@@ -14,7 +14,7 @@ const pb = new PocketBase(pbUrl);
 
 const requiredFixes = {
   probe_players: ['seat_index', 'score', 'dot_count', 'is_word_revealed', 'misspelled'],
-  probe_guesses: ['success', 'points_delta'],
+  probe_guesses: ['is_interruptive', 'success', 'points_delta'],
   in_app_notifications: ['is_read', 'sent_ntfy'],
   app_versions: ['is_latest']
 };

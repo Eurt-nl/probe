@@ -359,7 +359,7 @@ export async function submitRemoteGuess(remoteGameId: string, payload: {
       actor: payload.actor,
       target_player: payload.target_player,
       guess_char: payload.guess_char.toUpperCase()[0],
-      is_interruptive: false
+      is_interruptive: 'false'
     });
   } catch (error) {
     throw new Error(`Gok opslaan mislukt: ${pbErrorString(error)}`);
