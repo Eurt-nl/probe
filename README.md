@@ -95,9 +95,12 @@ Seed source file:
 ## Realtime remote mode
 
 - Home page now supports PocketBase login/register.
-- Create a remote lobby with your own join-code (for example `1234`).
-- Join accepts either PocketBase `record id` or your join-code.
-- Game page in `mode=remote` subscribes realtime to:
+- Logged-in users see:
+  - all open lobby games (`status=lobby` and slots available)
+  - their own active games with a direct open button
+- Creating/joining a game asks the secret word only at participation time.
+- Lobby owner can start the game once 2-4 players have joined.
+- Game page subscribes realtime to:
   - `probe_games`
   - `probe_players`
   - `probe_guesses`

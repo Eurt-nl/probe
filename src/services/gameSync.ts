@@ -36,6 +36,25 @@ export interface RemoteGuess {
   created: string;
 }
 
+export interface LobbyGameSummary {
+  id: string;
+  joinCode: string;
+  ownerId: string;
+  ownerName: string;
+  participantCount: number;
+  maxPlayers: number;
+  status: 'lobby' | 'active' | 'finished';
+  hasJoined: boolean;
+  canJoin: boolean;
+}
+
+export interface ActiveGameLink {
+  gameId: string;
+  joinCode: string;
+  ownerName: string;
+  participantCount: number;
+}
+
 function fakeHash(secret: string): string {
   // Placeholder hash so schema constraints are met; authoritative validation happens in backend hooks.
   return btoa(unescape(encodeURIComponent(secret))).padEnd(16, 'x').slice(0, 64);
@@ -51,16 +70,6 @@ function pbErrorString(error: unknown): string {
     message?: string;
   };
   return anyError?.response?.message ?? anyError?.message ?? String(error);
-}
-
-function isSeatConflictError(error: unknown): boolean {
-  const raw = JSON.stringify((error as { response?: { data?: unknown } })?.response?.data ?? {});
-  return raw.includes('idx_probe_players_game_seat') || raw.includes('seat_index');
-}
-
-function isGamePlayerConflictError(error: unknown): boolean {
-  const raw = JSON.stringify((error as { response?: { data?: unknown } })?.response?.data ?? {});
-  return raw.includes('idx_probe_players_game_player') || raw.includes('(game, player)');
 }
 
 function hiddenCountFromMask(mask: unknown, fallbackLength: number): number {
@@ -137,10 +146,78 @@ export async function listRemotePlayers(gameId: string): Promise<RemotePlayer[]>
   }));
 }
 
+export async function listLobbyGames(currentUserId: string): Promise<LobbyGameSummary[]> {
+  const games = await pb.collection(collections.games).getFullList({
+    filter: 'status = "lobby"',
+    expand: 'owner',
+    sort: '-created'
+  });
+
+  const summaries = await Promise.all(
+    games.map(async (game) => {
+      const players = await listRemotePlayers(game.id).catch(() => []);
+      const participantCount = players.length;
+      const hasJoined = players.some((player) => player.player === currentUserId);
+      const maxPlayers = Number(game.max_players ?? 4);
+
+      return {
+        id: game.id,
+        joinCode: String(game.seed ?? ''),
+        ownerId: String(game.owner ?? ''),
+        ownerName: String(game.expand?.owner?.display_name ?? game.expand?.owner?.name ?? game.owner ?? ''),
+        participantCount,
+        maxPlayers,
+        status: String(game.status) as LobbyGameSummary['status'],
+        hasJoined,
+        canJoin: !hasJoined && participantCount < maxPlayers
+      };
+    })
+  );
+
+  return summaries;
+}
+
+export async function listActiveGameLinks(currentUserId: string): Promise<ActiveGameLink[]> {
+  const memberships = await pb.collection(collections.players).getFullList({
+    filter: pb.filter('player = {:userId}', { userId: currentUserId }),
+    expand: 'game,game.owner',
+    sort: '-created'
+  });
+
+  const activeMemberships = memberships.filter((membership) => membership.expand?.game?.status === 'active');
+  const dedup = new Map<string, ActiveGameLink>();
+
+  for (const membership of activeMemberships) {
+    const game = membership.expand?.game;
+    if (!game?.id) continue;
+    if (dedup.has(game.id)) continue;
+
+    const players = await listRemotePlayers(game.id).catch(() => []);
+    dedup.set(game.id, {
+      gameId: game.id,
+      joinCode: String(game.seed ?? ''),
+      ownerName: String(game.expand?.owner?.display_name ?? game.expand?.owner?.name ?? game.owner ?? ''),
+      participantCount: players.length
+    });
+  }
+
+  return Array.from(dedup.values());
+}
+
 export async function joinRemoteGame(gameId: string, userId: string, secret: string): Promise<void> {
   const normalizedSecret = normalizeSecret(secret);
   if (!normalizedSecret.length) {
     throw new Error('Geheim woord is leeg of ongeldig');
+  }
+
+  const game = await getRemoteGame(gameId);
+  if (game.status !== 'lobby') {
+    throw new Error('Dit spel is al gestart; deelnemen is gesloten');
+  }
+
+  const existingPlayers = await listRemotePlayers(gameId).catch(() => []);
+  if (!existingPlayers.some((player) => player.player === userId) && existingPlayers.length >= 4) {
+    throw new Error('Dit spel heeft al het maximum van 4 spelers bereikt');
   }
 
   const dotCount = normalizedSecret.split('').filter((char) => char === '.').length;
@@ -151,8 +228,9 @@ export async function joinRemoteGame(gameId: string, userId: string, secret: str
 
   if (!ownPlayerRecord) {
     let created = false;
-    let alreadyJoined = false;
+    const usedSeats = new Set(existingPlayers.map((player) => player.seat_index));
     for (let seat = 0; seat < 4; seat += 1) {
+      if (usedSeats.has(seat)) continue;
       try {
         await pb.collection(collections.players).create({
           game: gameId,
@@ -169,21 +247,11 @@ export async function joinRemoteGame(gameId: string, userId: string, secret: str
         created = true;
         break;
       } catch (error) {
-        if (isGamePlayerConflictError(error)) {
-          alreadyJoined = true;
-          break;
-        }
-
-        if (isSeatConflictError(error)) {
-          // Try the next seat index if this one is taken.
-          continue;
-        }
-
         throw new Error(`Player create failed: ${pbErrorString(error)}`);
       }
     }
 
-    if (!created && !alreadyJoined) {
+    if (!created) {
       throw new Error('Geen vrije plek beschikbaar in deze lobby');
     }
   } else {
