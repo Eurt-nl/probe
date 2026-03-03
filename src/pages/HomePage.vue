@@ -155,13 +155,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useSessionStore } from '@/stores/sessionStore';
 import VersionBanner from '@/components/VersionBanner.vue';
 import AppVersionPanel from '@/components/AppVersionPanel.vue';
 import { useSwUpdate } from '@/services/swUpdate';
+import { collections, pb } from '@/services/pocketbase';
 import {
   createRemoteGame,
   deleteLobbyGame,
@@ -188,6 +189,8 @@ const availableGames = computed(() => lobbyGames.value.filter((game) => !game.ha
 const secretDialogOpen = ref(false);
 const secretDialogValue = ref('');
 const pendingGameId = ref('');
+let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+let stopLobbyRealtime: (() => void) | null = null;
 
 function errorMessage(error: unknown): string {
   const anyError = error as {
@@ -211,6 +214,38 @@ async function loadLobbyData(): Promise<void> {
   } catch (error) {
     $q.notify({ type: 'negative', message: `Lobby laden mislukt: ${errorMessage(error)}` });
   }
+}
+
+function scheduleLobbyRefresh(): void {
+  if (refreshTimer) clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(() => {
+    void loadLobbyData();
+  }, 120);
+}
+
+async function setupLobbyRealtime(): Promise<void> {
+  if (stopLobbyRealtime) {
+    stopLobbyRealtime();
+    stopLobbyRealtime = null;
+  }
+  if (!session.isAuthenticated) return;
+
+  const unsubs: Array<() => void | Promise<void>> = [];
+  const onAnyLobbyChange = () => {
+    scheduleLobbyRefresh();
+  };
+
+  const unsubGames = await pb.collection(collections.games).subscribe('*', onAnyLobbyChange);
+  unsubs.push(unsubGames);
+
+  const unsubPlayers = await pb.collection(collections.players).subscribe('*', onAnyLobbyChange);
+  unsubs.push(unsubPlayers);
+
+  stopLobbyRealtime = () => {
+    for (const unsub of unsubs) {
+      void unsub();
+    }
+  };
 }
 
 async function login(): Promise<void> {
@@ -301,10 +336,17 @@ watch(
   () => session.isAuthenticated,
   async () => {
     await loadLobbyData();
+    await setupLobbyRealtime();
   }
 );
 
 onMounted(async () => {
   await loadLobbyData();
+  await setupLobbyRealtime();
+});
+
+onUnmounted(() => {
+  if (refreshTimer) clearTimeout(refreshTimer);
+  if (stopLobbyRealtime) stopLobbyRealtime();
 });
 </script>
