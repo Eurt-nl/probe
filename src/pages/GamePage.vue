@@ -129,6 +129,7 @@
                 dense
                 maxlength="500"
                 label="Typ een bericht"
+                input-class="no-zoom-input"
                 @keyup.enter="onSendChat"
               />
             </div>
@@ -154,6 +155,7 @@
             label="Letter of dot"
             hint="1 teken: A-Z of ."
             maxlength="1"
+            input-class="no-zoom-input"
             autofocus
           />
         </q-card-section>
@@ -178,6 +180,7 @@
             label="Heel woord"
             hint="8-12 letters, zonder stippen"
             maxlength="12"
+            input-class="no-zoom-input"
             autofocus
           />
         </q-card-section>
@@ -333,6 +336,11 @@ function errorMessage(error: unknown): string {
   return `${anyError?.response?.message ?? anyError?.message ?? String(error)}${details}`;
 }
 
+function blurActiveInput(): void {
+  const active = document.activeElement as HTMLElement | null;
+  active?.blur();
+}
+
 async function refreshRemote(): Promise<void> {
   if (!gameId.value) return;
 
@@ -357,6 +365,7 @@ async function onSendChat(): Promise<void> {
   try {
     await sendRemoteChatMessage(remoteGame.value.id, session.userId, chatDraft.value);
     chatDraft.value = '';
+    blurActiveInput();
   } catch (error) {
     $q.notify({ type: 'negative', message: `Chat versturen mislukt: ${errorMessage(error)}` });
   }
@@ -394,6 +403,7 @@ async function onSubmitGuess(): Promise<void> {
 
     remoteGuessChar.value = '';
     guessDialogOpen.value = false;
+    blurActiveInput();
   } catch (error) {
     $q.notify({ type: 'negative', message: `Gok versturen mislukt: ${errorMessage(error)}` });
   }
@@ -420,6 +430,7 @@ async function onSubmitSuperGuess(): Promise<void> {
     superGuessWord.value = '';
     pendingSuperTargetUserId.value = '';
     pendingSuperTargetName.value = '';
+    blurActiveInput();
   } catch (error) {
     $q.notify({ type: 'negative', message: `Supergok versturen mislukt: ${errorMessage(error)}` });
   }
@@ -574,6 +585,10 @@ onUnmounted(() => {
   justify-content: center;
   font-weight: 600;
   margin: 0;
+}
+
+:deep(.no-zoom-input) {
+  font-size: 16px;
 }
 
 .dialog-card {
