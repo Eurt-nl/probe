@@ -103,7 +103,7 @@ async function processGuess(record) {
   const secret = String(secretRecord.secret_word || '').toUpperCase();
   const revealedMask = Array.isArray(target.revealed_mask)
     ? [...target.revealed_mask]
-    : Array.from({ length: Number(target.secret_length || secret.length) }, () => false);
+    : Array.from({ length: Number(target.secret_length || secret.length) }, () => null);
 
   const matchingIndexes = [];
   for (let i = 0; i < secret.length; i += 1) {
@@ -114,10 +114,11 @@ async function processGuess(record) {
 
   if (matchingIndexes.length > 0) {
     const revealIndex = matchingIndexes[0];
-    revealedMask[revealIndex] = true;
+    // Store the revealed character directly so clients can render public board state.
+    revealedMask[revealIndex] = secret[revealIndex];
 
     let pointsDelta = slotPoints(revealIndex);
-    const isNowFullyRevealed = revealedMask.every((value) => value === true);
+    const isNowFullyRevealed = revealedMask.every((value) => typeof value === 'string' && value.length > 0);
     if (isNowFullyRevealed) {
       pointsDelta += 50;
     }

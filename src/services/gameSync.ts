@@ -20,6 +20,7 @@ export interface RemotePlayer {
   hidden_count: number;
   is_word_revealed: boolean;
   display_name: string;
+  revealed_mask: Array<string | null>;
 }
 
 export interface RemoteGuess {
@@ -105,9 +106,20 @@ function pbErrorString(error: unknown): string {
 
 function hiddenCountFromMask(mask: unknown, fallbackLength: number): number {
   if (Array.isArray(mask)) {
-    return mask.filter((item) => item === false).length;
+    return mask.filter((item) => item === false || item === null || item === '').length;
   }
   return fallbackLength;
+}
+
+function normalizeRevealedMask(mask: unknown, fallbackLength: number): Array<string | null> {
+  if (!Array.isArray(mask)) {
+    return Array.from({ length: fallbackLength }, () => null);
+  }
+
+  return mask.map((item) => {
+    if (typeof item === 'string' && item.length > 0) return item[0].toUpperCase();
+    return null;
+  });
 }
 
 export async function createRemoteGame(
@@ -147,7 +159,8 @@ export async function listRemotePlayers(gameId: string): Promise<RemotePlayer[]>
     dot_count: Number(record.dot_count ?? 0),
     hidden_count: hiddenCountFromMask(record.revealed_mask, Number(record.secret_length ?? 0)),
     is_word_revealed: Boolean(record.is_word_revealed),
-    display_name: String(record.expand?.player?.display_name ?? record.expand?.player?.name ?? record.player)
+    display_name: String(record.expand?.player?.display_name ?? record.expand?.player?.name ?? record.player),
+    revealed_mask: normalizeRevealedMask(record.revealed_mask, Number(record.secret_length ?? 0))
   }));
 }
 
@@ -259,7 +272,7 @@ export async function joinRemoteGame(gameId: string, userId: string, secret: str
           secret_word_hash: fakeHash(normalizedSecret),
           secret_length: String(normalizedSecret.length),
           dot_count: String(dotCount),
-          revealed_mask: JSON.stringify(Array.from({ length: normalizedSecret.length }, () => false)),
+          revealed_mask: JSON.stringify(Array.from({ length: normalizedSecret.length }, () => null)),
           is_word_revealed: 'false',
           misspelled: 'false'
         });
@@ -278,7 +291,7 @@ export async function joinRemoteGame(gameId: string, userId: string, secret: str
       secret_word_hash: fakeHash(normalizedSecret),
       secret_length: String(normalizedSecret.length),
       dot_count: String(dotCount),
-      revealed_mask: JSON.stringify(Array.from({ length: normalizedSecret.length }, () => false)),
+      revealed_mask: JSON.stringify(Array.from({ length: normalizedSecret.length }, () => null)),
       is_word_revealed: 'false',
       misspelled: 'false'
     });
