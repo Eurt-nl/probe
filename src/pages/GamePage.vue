@@ -36,7 +36,7 @@
           <div class="player-score q-mr-md">
             <div class="text-caption">Score</div>
             <div class="text-h6">{{ player.score }}</div>
-            <div v-if="isMobileLayout" class="mobile-player-meta">
+            <div class="player-meta">
               <span class="mobile-player-name">{{ player.display_name }}</span>
               <q-badge
                 v-if="remoteGame?.turn_player === player.player"
@@ -48,16 +48,6 @@
           </div>
 
           <div class="col player-main">
-            <div v-if="!isMobileLayout" class="row items-center q-gutter-sm player-title-row">
-              <div class="text-subtitle1">{{ player.display_name }}</div>
-              <q-badge
-                v-if="remoteGame?.turn_player === player.player"
-                color="primary"
-                text-color="white"
-                label="Aan de beurt"
-              />
-            </div>
-
             <div class="word-row q-mt-sm">
               <div class="word-track">
                 <div v-for="(slot, index) in boardSlots(player)" :key="`${player.id}-${index}`" class="slot-cell">
@@ -277,7 +267,6 @@ let stopSubscription: (() => void) | null = null;
 
 const isOwner = computed(() => remoteGame.value?.owner === session.userId);
 const isMyTurn = computed(() => Boolean(session.userId) && remoteGame.value?.turn_player === session.userId);
-const isMobileLayout = computed(() => $q.screen.xs || $q.screen.width <= 430);
 const isCurrentUserInGame = computed(() =>
   Boolean(session.userId) && remotePlayers.value.some((player) => player.player === session.userId)
 );
@@ -577,7 +566,7 @@ onUnmounted(() => {
   min-width: 78px;
 }
 
-.mobile-player-meta {
+.player-meta {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -621,17 +610,6 @@ onUnmounted(() => {
   .player-score {
     min-width: 64px;
     margin-right: 8px;
-  }
-
-  .player-title-row {
-    display: none;
-  }
-
-  .mobile-player-meta {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 2px;
   }
 
   .mobile-player-name {
