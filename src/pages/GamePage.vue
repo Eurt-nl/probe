@@ -78,11 +78,11 @@
         <q-card-section>
           <div class="text-h6">Remote Guess log</div>
           <q-list separator>
-            <q-item v-for="entry in remoteGuesses" :key="entry.id">
+            <q-item v-for="entry in sortedRemoteGuesses" :key="entry.id">
               <q-item-section>
                 <q-item-label>{{ entry.reason ?? 'Guess event' }}</q-item-label>
                 <q-item-label caption>
-                  actor: {{ shortId(entry.actor) }} -> target: {{ shortId(entry.target_player) }} •
+                  speler: {{ playerNameByUserId(entry.actor) }} -> opponent: {{ playerNameByUserId(entry.target_player) }} •
                   {{ entry.guess_char ?? entry.guess_word ?? '-' }} • {{ entry.points_delta }}
                 </q-item-label>
               </q-item-section>
@@ -158,6 +158,13 @@ let stopSubscription: (() => void) | null = null;
 
 const isOwner = computed(() => remoteGame.value?.owner === session.userId);
 const isMyTurn = computed(() => Boolean(session.userId) && remoteGame.value?.turn_player === session.userId);
+const sortedRemoteGuesses = computed(() =>
+  [...remoteGuesses.value].sort((a, b) => {
+    const aKey = a.created || a.id;
+    const bKey = b.created || b.id;
+    return bKey.localeCompare(aKey);
+  })
+);
 const currentTurnPlayerName = computed(() => {
   const userId = remoteGame.value?.turn_player;
   if (!userId) return '-';
@@ -232,6 +239,10 @@ async function onStartRemote(): Promise<void> {
 
 function shortId(value: string): string {
   return value.slice(0, 6);
+}
+
+function playerNameByUserId(userId: string): string {
+  return remotePlayers.value.find((player) => player.player === userId)?.display_name ?? shortId(userId);
 }
 
 function boardSlots(player: RemotePlayer): Array<string | null> {
