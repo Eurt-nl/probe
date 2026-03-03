@@ -33,22 +33,25 @@
         :class="`player-card--${player.seat_index % 4}`"
       >
         <q-card-section class="row items-center no-wrap player-row">
-          <div class="player-score q-mr-md">
-            <div class="text-caption">Score</div>
-            <div class="text-h6">{{ player.score }}</div>
-            <div class="player-meta">
-              <span class="mobile-player-name">{{ player.display_name }}</span>
-              <q-badge
-                v-if="remoteGame?.turn_player === player.player"
-                color="primary"
-                text-color="white"
-                label="Aan de beurt"
-              />
-            </div>
+          <div class="player-avatar q-mr-md">
+            {{ avatarText(player.display_name) }}
           </div>
 
           <div class="col player-main">
-            <div class="word-row q-mt-sm">
+            <div class="row items-center justify-between player-head q-gutter-sm">
+              <div class="row items-center q-gutter-sm">
+                <div class="text-subtitle1">{{ player.display_name }}</div>
+                <q-badge
+                  v-if="remoteGame?.turn_player === player.player"
+                  color="primary"
+                  text-color="white"
+                  label="Aan de beurt"
+                />
+              </div>
+              <div class="text-subtitle1 text-weight-bold">{{ player.score }}</div>
+            </div>
+
+            <div class="word-row q-mt-xs">
               <div class="word-track">
                 <div v-for="(slot, index) in boardSlots(player)" :key="`${player.id}-${index}`" class="slot-cell">
                   <q-chip
@@ -448,6 +451,10 @@ function shortId(value: string): string {
   return value.slice(0, 6);
 }
 
+function avatarText(name: string): string {
+  return (name || '?').trim().charAt(0).toUpperCase() || '?';
+}
+
 function playerNameByUserId(userId: string): string {
   return remotePlayers.value.find((player) => player.player === userId)?.display_name ?? shortId(userId);
 }
@@ -562,15 +569,23 @@ onUnmounted(() => {
   border-left: 8px solid #e53935;
 }
 
-.player-score {
-  min-width: 78px;
-}
-
-.player-meta {
+.player-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: #f2f2f2;
+  border: 1px solid #d5d5d5;
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 2px;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 18px;
+  color: #404040;
+  flex-shrink: 0;
+}
+
+.player-head {
+  min-height: 28px;
 }
 
 .word-row {
@@ -607,15 +622,11 @@ onUnmounted(() => {
     align-items: flex-start;
   }
 
-  .player-score {
-    min-width: 64px;
+  .player-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
     margin-right: 8px;
-  }
-
-  .mobile-player-name {
-    font-size: 13px;
-    font-weight: 600;
-    line-height: 1.2;
   }
 
   .player-main {
