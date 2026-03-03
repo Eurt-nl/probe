@@ -491,7 +491,7 @@ export async function createRemoteTurnForCurrentPlayer(gameId: string, turnPlaye
   });
 
   for (const turn of turnRecords.filter((record) => String(record.status) === 'active')) {
-    await pb.collection(collections.turns).update(turn.id, { status: 'ended' }).catch(() => {});
+    await pb.collection(collections.turns).update(turn.id, { status: 'ended' }, { requestKey: null }).catch(() => {});
   }
 
   const enabledCards = await pb.collection(collections.activityDeck).getFullList({
@@ -518,7 +518,7 @@ export async function createRemoteTurnForCurrentPlayer(gameId: string, turnPlaye
   }
 
   try {
-    await pb.collection(collections.turns).create(payload);
+    await pb.collection(collections.turns).create(payload, { requestKey: null });
   } catch (error) {
     const message = pbErrorString(error);
     if (!message.includes('"turn_index"')) {
@@ -536,7 +536,7 @@ export async function createRemoteTurnForCurrentPlayer(gameId: string, turnPlaye
     if (pickedCard?.id) {
       stringPayload.activity_card = pickedCard.id;
     }
-    await pb.collection(collections.turns).create(stringPayload);
+    await pb.collection(collections.turns).create(stringPayload, { requestKey: null });
   }
 }
 
