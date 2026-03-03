@@ -78,21 +78,20 @@
         <q-card-section>
           <div class="text-h6">Remote Guess log</div>
           <q-list separator>
-            <q-item v-for="entry in sortedRemoteGuesses" :key="entry.id">
-              <q-item-section>
-                <q-item-label>{{ entry.reason ?? 'Guess event' }}</q-item-label>
-                <q-item-label caption>
-                  speler: {{ playerNameByUserId(entry.actor) }} -> opponent: {{ playerNameByUserId(entry.target_player) }} •
-                  {{ entry.guess_char ?? entry.guess_word ?? '-' }} • {{ entry.points_delta }}
-                </q-item-label>
+            <q-item v-for="entry in pagedRemoteGuesses" :key="entry.id" dense>
+              <q-item-section avatar>
+                <q-icon :name="entry.success ? 'check_circle' : 'cancel'" :color="entry.success ? 'positive' : 'negative'" />
               </q-item-section>
-              <q-item-section side>
-                <q-chip dense :color="entry.success ? 'positive' : 'negative'" text-color="white">
-                  {{ entry.success ? 'Success' : 'Fail' }}
-                </q-chip>
+              <q-item-section>
+                <q-item-label>
+                  {{ playerNameByUserId(entry.actor) }} vroeg aan {{ playerNameByUserId(entry.target_player) }} naar {{ guessText(entry) }}
+                </q-item-label>
               </q-item-section>
             </q-item>
           </q-list>
+          <div class="row justify-center q-mt-sm" v-if="guessLogTotalPages > 1">
+            <q-pagination v-model="guessLogPage" :max="guessLogTotalPages" :max-pages="6" direction-links />
+          </div>
         </q-card-section>
       </q-card>
     </div>
@@ -124,7 +123,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useSessionStore } from '@/stores/sessionStore';
@@ -153,6 +152,8 @@ const remoteGuessChar = ref('');
 const targetUserId = ref('');
 const guessDialogOpen = ref(false);
 const pendingGuessTargetName = ref('');
+const guessLogPage = ref(1);
+const guessLogPerPage = 2;
 
 let stopSubscription: (() => void) | null = null;
 
@@ -165,6 +166,11 @@ const sortedRemoteGuesses = computed(() =>
     return bKey.localeCompare(aKey);
   })
 );
+const guessLogTotalPages = computed(() => Math.max(1, Math.ceil(sortedRemoteGuesses.value.length / guessLogPerPage)));
+const pagedRemoteGuesses = computed(() => {
+  const start = (guessLogPage.value - 1) * guessLogPerPage;
+  return sortedRemoteGuesses.value.slice(start, start + guessLogPerPage);
+});
 const currentTurnPlayerName = computed(() => {
   const userId = remoteGame.value?.turn_player;
   if (!userId) return '-';
@@ -245,6 +251,13 @@ function playerNameByUserId(userId: string): string {
   return remotePlayers.value.find((player) => player.player === userId)?.display_name ?? shortId(userId);
 }
 
+function guessText(entry: RemoteGuess): string {
+  if (entry.guess_char === '.') return 'een stip';
+  if (entry.guess_char) return `een ${entry.guess_char}`;
+  if (entry.guess_word) return `het woord ${entry.guess_word}`;
+  return 'een teken';
+}
+
 function boardSlots(player: RemotePlayer): Array<string | null> {
   const slots = player.revealed_mask;
   if (slots.length >= 12) return slots.slice(0, 12);
@@ -269,6 +282,12 @@ function openGuessModal(player: RemotePlayer): void {
 function triggerUpdate(): void {
   void updateApp();
 }
+
+watch(guessLogTotalPages, (totalPages) => {
+  if (guessLogPage.value > totalPages) {
+    guessLogPage.value = totalPages;
+  }
+});
 
 onMounted(async () => {
   await refreshRemote();
