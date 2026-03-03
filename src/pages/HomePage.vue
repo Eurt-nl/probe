@@ -189,6 +189,7 @@ const availableGames = computed(() => lobbyGames.value.filter((game) => !game.ha
 const secretDialogOpen = ref(false);
 const secretDialogValue = ref('');
 const pendingGameId = ref('');
+const pendingDialogMode = ref<'create' | 'join'>('join');
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 let stopLobbyRealtime: (() => void) | null = null;
 
@@ -212,7 +213,9 @@ async function loadLobbyData(): Promise<void> {
     lobbyGames.value = await listLobbyGames(session.userId);
     activeGames.value = await listActiveGameLinks(session.userId);
   } catch (error) {
-    $q.notify({ type: 'negative', message: `Lobby laden mislukt: ${errorMessage(error)}` });
+    const msg = errorMessage(error);
+    if (msg.includes('request was aborted')) return;
+    $q.notify({ type: 'negative', message: `Lobby laden mislukt: ${msg}` });
   }
 }
 
@@ -279,11 +282,10 @@ async function onCreateGame(): Promise<void> {
   }
 
   try {
-    const game = await createRemoteGame(session.userId, 'classic');
-    pendingGameId.value = game.id;
+    pendingDialogMode.value = 'create';
+    pendingGameId.value = '';
     secretDialogValue.value = '';
     secretDialogOpen.value = true;
-    await loadLobbyData();
   } catch (error) {
     $q.notify({ type: 'negative', message: `Spel aanmaken mislukt: ${errorMessage(error)}` });
   }
@@ -303,6 +305,7 @@ async function onDeleteLobbyGame(gameId: string): Promise<void> {
 }
 
 function promptSecretForJoin(gameId: string): void {
+  pendingDialogMode.value = 'join';
   pendingGameId.value = gameId;
   secretDialogValue.value = '';
   secretDialogOpen.value = true;
@@ -315,6 +318,11 @@ async function confirmSecretJoin(): Promise<void> {
   }
 
   try {
+    if (pendingDialogMode.value === 'create') {
+      const game = await createRemoteGame(session.userId, 'classic');
+      pendingGameId.value = game.id;
+    }
+
     await joinRemoteGame(pendingGameId.value, session.userId, secretDialogValue.value.trim());
     secretDialogOpen.value = false;
     $q.notify({ type: 'positive', message: 'Deelname bevestigd' });

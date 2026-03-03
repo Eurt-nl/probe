@@ -99,6 +99,7 @@ export async function getRemoteGame(gameId: string): Promise<RemoteGame> {
 
 export async function listRemotePlayers(gameId: string): Promise<RemotePlayer[]> {
   const records = await pb.collection(collections.players).getFullList({
+    requestKey: null,
     filter: pb.filter('game = {:gameId}', { gameId }),
     expand: 'player',
     sort: 'seat_index'
@@ -120,6 +121,7 @@ export async function listRemotePlayers(gameId: string): Promise<RemotePlayer[]>
 
 export async function listLobbyGames(currentUserId: string): Promise<LobbyGameSummary[]> {
   const games = await pb.collection(collections.games).getFullList({
+    requestKey: null,
     filter: pb.filter('status = {:status}', { status: 'lobby' }),
     expand: 'owner',
     sort: '-id'
@@ -150,6 +152,7 @@ export async function listLobbyGames(currentUserId: string): Promise<LobbyGameSu
 
 export async function listActiveGameLinks(currentUserId: string): Promise<ActiveGameLink[]> {
   const memberships = await pb.collection(collections.players).getFullList({
+    requestKey: null,
     filter: pb.filter('player = {:userId}', { userId: currentUserId }),
     expand: 'game,game.owner',
     sort: '-id'
@@ -302,6 +305,7 @@ export async function submitRemoteGuess(remoteGameId: string, payload: {
 
 export async function listRemoteGuesses(gameId: string): Promise<RemoteGuess[]> {
   const records = await pb.collection(collections.guesses).getFullList({
+    requestKey: null,
     filter: pb.filter('game = {:gameId}', { gameId }),
     sort: '-id'
   });
