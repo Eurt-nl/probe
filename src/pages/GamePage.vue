@@ -164,6 +164,15 @@ const currentTurnPlayerName = computed(() => {
   return remotePlayers.value.find((player) => player.player === userId)?.display_name ?? shortId(userId);
 });
 
+function errorMessage(error: unknown): string {
+  const anyError = error as {
+    response?: { message?: string; data?: Record<string, unknown> };
+    message?: string;
+  };
+  const details = anyError?.response?.data ? ` ${JSON.stringify(anyError.response.data)}` : '';
+  return `${anyError?.response?.message ?? anyError?.message ?? String(error)}${details}`;
+}
+
 async function refreshRemote(): Promise<void> {
   if (!gameId.value) return;
 
@@ -208,7 +217,7 @@ async function onSubmitGuess(): Promise<void> {
     remoteGuessChar.value = '';
     guessDialogOpen.value = false;
   } catch (error) {
-    $q.notify({ type: 'negative', message: `Gok versturen mislukt: ${String(error)}` });
+    $q.notify({ type: 'negative', message: `Gok versturen mislukt: ${errorMessage(error)}` });
   }
 }
 
@@ -217,7 +226,7 @@ async function onStartRemote(): Promise<void> {
   try {
     await startRemoteGame(remoteGame.value.id);
   } catch (error) {
-    $q.notify({ type: 'negative', message: `Remote start mislukt: ${String(error)}` });
+    $q.notify({ type: 'negative', message: `Remote start mislukt: ${errorMessage(error)}` });
   }
 }
 

@@ -101,7 +101,8 @@ function pbErrorString(error: unknown): string {
     response?: { message?: string; data?: Record<string, unknown> };
     message?: string;
   };
-  return anyError?.response?.message ?? anyError?.message ?? String(error);
+  const details = anyError?.response?.data ? ` ${JSON.stringify(anyError.response.data)}` : '';
+  return `${anyError?.response?.message ?? anyError?.message ?? String(error)}${details}`;
 }
 
 function hiddenCountFromMask(mask: unknown, fallbackLength: number): number {
@@ -336,16 +337,28 @@ export async function submitRemoteGuess(remoteGameId: string, payload: {
   target_player: string;
   guess_char: string;
 }): Promise<void> {
-  await pb.collection(collections.guesses).create({
-    game: remoteGameId,
-    actor: payload.actor,
-    target_player: payload.target_player,
-    guess_char: payload.guess_char.toUpperCase()[0],
-    is_interruptive: 'false',
-    success: 'false',
-    points_delta: '0',
-    reason: 'Pending validation'
-  });
+  const latestGame = await getRemoteGame(remoteGameId);
+  if (latestGame.status !== 'active') {
+    throw new Error('Spel is nog niet actief');
+  }
+  if (String(latestGame.turn_player) !== String(payload.actor)) {
+    throw new Error('Je bent niet aan de beurt');
+  }
+
+  try {
+    await pb.collection(collections.guesses).create({
+      game: remoteGameId,
+      actor: payload.actor,
+      target_player: payload.target_player,
+      guess_char: payload.guess_char.toUpperCase()[0],
+      is_interruptive: false,
+      success: false,
+      points_delta: 0,
+      reason: 'Pending validation'
+    });
+  } catch (error) {
+    throw new Error(`Gok opslaan mislukt: ${pbErrorString(error)}`);
+  }
 }
 
 export async function listRemoteGuesses(gameId: string): Promise<RemoteGuess[]> {
