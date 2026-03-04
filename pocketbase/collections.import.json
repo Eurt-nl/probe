@@ -1,5 +1,226 @@
 [
   {
+    "id": "pbc_probe_users",
+    "listRule": "@request.auth.id != ''",
+    "viewRule": "@request.auth.id != ''",
+    "createRule": "",
+    "updateRule": "id = @request.auth.id",
+    "deleteRule": "id = @request.auth.id",
+    "name": "probe_users",
+    "type": "auth",
+    "fields": [
+      {
+        "autogeneratePattern": "[a-z0-9]{15}",
+        "hidden": false,
+        "id": "text3208210256",
+        "max": 15,
+        "min": 15,
+        "name": "id",
+        "pattern": "^[a-z0-9]+$",
+        "presentable": false,
+        "primaryKey": true,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "cost": 0,
+        "hidden": true,
+        "id": "password901924565",
+        "max": 0,
+        "min": 8,
+        "name": "password",
+        "pattern": "",
+        "presentable": false,
+        "required": true,
+        "system": true,
+        "type": "password"
+      },
+      {
+        "autogeneratePattern": "[a-zA-Z0-9]{50}",
+        "hidden": true,
+        "id": "text2504183744",
+        "max": 60,
+        "min": 30,
+        "name": "tokenKey",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "exceptDomains": null,
+        "hidden": false,
+        "id": "email3885137012",
+        "name": "email",
+        "onlyDomains": null,
+        "presentable": false,
+        "required": true,
+        "system": true,
+        "type": "email"
+      },
+      {
+        "hidden": false,
+        "id": "bool1547992806",
+        "name": "emailVisibility",
+        "presentable": false,
+        "required": false,
+        "system": true,
+        "type": "bool"
+      },
+      {
+        "hidden": false,
+        "id": "bool256245529",
+        "name": "verified",
+        "presentable": false,
+        "required": false,
+        "system": true,
+        "type": "bool"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "text1579384326",
+        "max": 255,
+        "min": 1,
+        "name": "name",
+        "pattern": "",
+        "presentable": true,
+        "primaryKey": false,
+        "required": true,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "hidden": false,
+        "id": "file376926767",
+        "maxSelect": 1,
+        "maxSize": 0,
+        "mimeTypes": [
+          "image/jpeg",
+          "image/png",
+          "image/svg+xml",
+          "image/gif",
+          "image/webp"
+        ],
+        "name": "avatar",
+        "presentable": false,
+        "protected": false,
+        "required": false,
+        "system": false,
+        "thumbs": null,
+        "type": "file"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "text3578368839",
+        "max": 24,
+        "min": 2,
+        "name": "display_name",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "hidden": false,
+        "id": "autodate2990389176",
+        "name": "created",
+        "onCreate": true,
+        "onUpdate": false,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      },
+      {
+        "hidden": false,
+        "id": "autodate3332085495",
+        "name": "updated",
+        "onCreate": true,
+        "onUpdate": true,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX idx_tokenKey_probe_users ON probe_users (tokenKey)",
+      "CREATE UNIQUE INDEX idx_email_probe_users ON probe_users (email) WHERE email != ''",
+      "CREATE UNIQUE INDEX idx_name_probe_users ON probe_users (name)"
+    ],
+    "system": false,
+    "authRule": "",
+    "manageRule": null,
+    "authAlert": {
+      "enabled": false,
+      "emailTemplate": {
+        "subject": "Login from a new location",
+        "body": "<p>Hello,</p><p>We noticed a login to your {APP_NAME} account from a new location:</p><p><em>{ALERT_INFO}</em></p><p><strong>If this wasn't you, you should immediately change your {APP_NAME} account password to revoke access from all other locations.</strong></p><p>If this was you, you may disregard this email.</p><p><br/>Thanks,<br/>{APP_NAME} team</p>"
+      }
+    },
+    "oauth2": {
+      "mappedFields": {
+        "id": "",
+        "name": "name",
+        "username": "",
+        "avatarURL": "avatar"
+      },
+      "enabled": false
+    },
+    "passwordAuth": {
+      "enabled": true,
+      "identityFields": [
+        "email"
+      ]
+    },
+    "mfa": {
+      "enabled": false,
+      "duration": 1800,
+      "rule": ""
+    },
+    "otp": {
+      "enabled": false,
+      "duration": 180,
+      "length": 8,
+      "emailTemplate": {
+        "subject": "OTP for {APP_NAME}",
+        "body": "<p>Hello,</p><p>Your one-time password is: <strong>{OTP}</strong></p><p><i>If you didn't ask for the one-time password, you can ignore this email.</i></p><p><br/>Thanks,<br/>{APP_NAME} team</p>"
+      }
+    },
+    "authToken": {
+      "duration": 604800
+    },
+    "passwordResetToken": {
+      "duration": 1800
+    },
+    "emailChangeToken": {
+      "duration": 1800
+    },
+    "verificationToken": {
+      "duration": 259200
+    },
+    "fileToken": {
+      "duration": 180
+    },
+    "verificationTemplate": {
+      "subject": "Confirm your {APP_NAME} signup request",
+      "body": "<p>Hello,</p><p>Thank you for joining {APP_NAME}.</p><p>Click below to verify your email:</p><p><a class=\"btn\" href=\"{APP_URL}/_/#/auth/confirm-verification/{TOKEN}\" target=\"_blank\" rel=\"noopener\">Verify email</a></p><p><br/>Thanks,<br/>{APP_NAME} team</p>"
+    },
+    "resetPasswordTemplate": {
+      "subject": "Reset your {APP_NAME} password",
+      "body": "<p>Hello,</p><p>Click below to reset your password.</p><p><a class=\"btn\" href=\"{APP_URL}/_/#/auth/confirm-password-reset/{TOKEN}\" target=\"_blank\" rel=\"noopener\">Reset password</a></p><p><i>If you didn't request this, you can ignore this email.</i></p><p><br/>Thanks,<br/>{APP_NAME} team</p>"
+    },
+    "confirmEmailChangeTemplate": {
+      "subject": "Confirm your {APP_NAME} new email address",
+      "body": "<p>Hello,</p><p>Click below to confirm your new email address.</p><p><a class=\"btn\" href=\"{APP_URL}/_/#/auth/confirm-email-change/{TOKEN}\" target=\"_blank\" rel=\"noopener\">Confirm new email</a></p><p><i>If you didn't request this, you can ignore this email.</i></p><p><br/>Thanks,<br/>{APP_NAME} team</p>"
+    }
+  },
+  {
     "id": "pbc_1000000001",
     "listRule": "@request.auth.id != '' && (owner = @request.auth.id || probe_players_via_game.player ?= @request.auth.id)",
     "viewRule": "@request.auth.id != '' && (owner = @request.auth.id || probe_players_via_game.player ?= @request.auth.id)",
@@ -18,7 +239,11 @@
         "presentable": false,
         "hidden": false,
         "maxSelect": 1,
-        "values": ["lobby", "active", "finished"]
+        "values": [
+          "lobby",
+          "active",
+          "finished"
+        ]
       },
       {
         "id": "relation100001",
@@ -28,7 +253,7 @@
         "system": false,
         "presentable": false,
         "hidden": false,
-        "collectionId": "_pb_users_auth_",
+        "collectionId": "pbc_probe_users",
         "cascadeDelete": false,
         "minSelect": 0,
         "maxSelect": 1
@@ -41,7 +266,7 @@
         "system": false,
         "presentable": false,
         "hidden": false,
-        "collectionId": "_pb_users_auth_",
+        "collectionId": "pbc_probe_users",
         "cascadeDelete": false,
         "minSelect": 0,
         "maxSelect": 1
@@ -67,7 +292,11 @@
         "presentable": false,
         "hidden": false,
         "maxSelect": 1,
-        "values": ["classic", "two_player", "progressive"]
+        "values": [
+          "classic",
+          "two_player",
+          "progressive"
+        ]
       },
       {
         "id": "text100000001",
@@ -133,7 +362,7 @@
         "system": false,
         "presentable": false,
         "hidden": false,
-        "collectionId": "_pb_users_auth_",
+        "collectionId": "pbc_probe_users",
         "cascadeDelete": false,
         "minSelect": 0,
         "maxSelect": 1
@@ -326,8 +555,8 @@
     "id": "pbc_1000000004",
     "listRule": "@request.auth.id != '' && game.probe_players_via_game.player ?= @request.auth.id",
     "viewRule": "@request.auth.id != '' && game.probe_players_via_game.player ?= @request.auth.id",
-    "createRule": "@request.auth.id != '' && game.probe_players_via_game.player ?= @request.auth.id && player = game.turn_player && game.status = 'active'",
-    "updateRule": "@request.auth.id != '' && game.turn_player = @request.auth.id",
+    "createRule": "(@request.auth.id != '' && game.probe_players_via_game.player ?= @request.auth.id && player = game.turn_player && game.status = 'active') || @request.auth.collectionName = '_superusers'",
+    "updateRule": "(@request.auth.id != '' && game.turn_player = @request.auth.id) || @request.auth.collectionName = '_superusers'",
     "deleteRule": null,
     "name": "probe_turns",
     "type": "base",
@@ -353,7 +582,7 @@
         "system": false,
         "presentable": false,
         "hidden": false,
-        "collectionId": "_pb_users_auth_",
+        "collectionId": "pbc_probe_users",
         "cascadeDelete": false,
         "minSelect": 0,
         "maxSelect": 1
@@ -404,7 +633,10 @@
         "presentable": false,
         "hidden": false,
         "maxSelect": 1,
-        "values": ["active", "ended"]
+        "values": [
+          "active",
+          "ended"
+        ]
       }
     ],
     "indexes": [
@@ -457,7 +689,7 @@
         "system": false,
         "presentable": false,
         "hidden": false,
-        "collectionId": "_pb_users_auth_",
+        "collectionId": "pbc_probe_users",
         "cascadeDelete": false,
         "minSelect": 0,
         "maxSelect": 1
@@ -470,7 +702,7 @@
         "system": false,
         "presentable": false,
         "hidden": false,
-        "collectionId": "_pb_users_auth_",
+        "collectionId": "pbc_probe_users",
         "cascadeDelete": false,
         "minSelect": 0,
         "maxSelect": 1
@@ -574,7 +806,7 @@
     "createRule": null,
     "updateRule": "@request.auth.id = user",
     "deleteRule": "@request.auth.id = user",
-    "name": "in_app_notifications",
+    "name": "probe_in_app_notifications",
     "type": "base",
     "fields": [
       {
@@ -585,7 +817,7 @@
         "system": false,
         "presentable": false,
         "hidden": false,
-        "collectionId": "_pb_users_auth_",
+        "collectionId": "pbc_probe_users",
         "cascadeDelete": true,
         "minSelect": 0,
         "maxSelect": 1
@@ -612,7 +844,11 @@
         "presentable": false,
         "hidden": false,
         "maxSelect": 1,
-        "values": ["turn_start", "game_update", "system"]
+        "values": [
+          "turn_start",
+          "game_update",
+          "system"
+        ]
       },
       {
         "id": "text600000001",
@@ -687,9 +923,9 @@
       }
     ],
     "indexes": [
-      "CREATE INDEX idx_inapp_user_read ON in_app_notifications (user, is_read)",
-      "CREATE INDEX idx_inapp_game ON in_app_notifications (game)",
-      "CREATE INDEX idx_inapp_turnstart_sent_at ON in_app_notifications (type, sent_at)"
+      "CREATE INDEX idx_probe_inapp_user_read ON probe_in_app_notifications (user, is_read)",
+      "CREATE INDEX idx_probe_inapp_game ON probe_in_app_notifications (game)",
+      "CREATE INDEX idx_probe_inapp_turnstart_sent_at ON probe_in_app_notifications (type, sent_at)"
     ],
     "system": false
   },
@@ -724,7 +960,7 @@
         "system": false,
         "presentable": false,
         "hidden": false,
-        "collectionId": "_pb_users_auth_",
+        "collectionId": "pbc_probe_users",
         "cascadeDelete": true,
         "minSelect": 0,
         "maxSelect": 1
@@ -756,7 +992,7 @@
     "createRule": null,
     "updateRule": null,
     "deleteRule": null,
-    "name": "app_versions",
+    "name": "probe_app_versions",
     "type": "base",
     "fields": [
       {
@@ -819,8 +1055,8 @@
       }
     ],
     "indexes": [
-      "CREATE UNIQUE INDEX idx_app_versions_version ON app_versions (version)",
-      "CREATE INDEX idx_app_versions_is_latest ON app_versions (is_latest)"
+      "CREATE UNIQUE INDEX idx_probe_app_versions_version ON probe_app_versions (version)",
+      "CREATE INDEX idx_probe_app_versions_is_latest ON probe_app_versions (is_latest)"
     ],
     "system": false
   },
@@ -855,7 +1091,7 @@
         "system": false,
         "presentable": false,
         "hidden": false,
-        "collectionId": "_pb_users_auth_",
+        "collectionId": "pbc_probe_users",
         "cascadeDelete": false,
         "minSelect": 0,
         "maxSelect": 1
@@ -890,6 +1126,129 @@
       "CREATE INDEX idx_probe_chat_messages_game ON probe_chat_messages (game)",
       "CREATE INDEX idx_probe_chat_messages_actor ON probe_chat_messages (actor)",
       "CREATE INDEX idx_probe_chat_messages_message_at ON probe_chat_messages (message_at)"
+    ],
+    "system": false
+  },
+  {
+    "id": "pbc_1463026483",
+    "listRule": "@request.auth.id != ''",
+    "viewRule": "@request.auth.id != ''",
+    "createRule": "@request.auth.id != '' && actor = @request.auth.id",
+    "updateRule": null,
+    "deleteRule": null,
+    "name": "probe_lobby_chat_messages",
+    "type": "base",
+    "fields": [
+      {
+        "id": "relation910001",
+        "name": "actor",
+        "type": "relation",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "collectionId": "pbc_probe_users",
+        "cascadeDelete": false,
+        "minSelect": 0,
+        "maxSelect": 1
+      },
+      {
+        "id": "text910000001",
+        "name": "message",
+        "type": "text",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "min": 1,
+        "max": 500,
+        "pattern": "",
+        "autogeneratePattern": "",
+        "primaryKey": false
+      },
+      {
+        "id": "autodate91000001",
+        "name": "message_at",
+        "type": "autodate",
+        "required": false,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "onCreate": true,
+        "onUpdate": false
+      }
+    ],
+    "indexes": [
+      "CREATE INDEX idx_probe_lobby_chat_messages_actor ON probe_lobby_chat_messages (actor)",
+      "CREATE INDEX idx_probe_lobby_chat_messages_message_at ON probe_lobby_chat_messages (message_at)"
+    ],
+    "system": false
+  },
+  {
+    "id": "pbc_1000000011",
+    "listRule": "@request.auth.id != ''",
+    "viewRule": "@request.auth.id != ''",
+    "createRule": "@request.auth.id != '' && player = @request.auth.id",
+    "updateRule": "@request.auth.id != '' && player = @request.auth.id",
+    "deleteRule": "@request.auth.id != '' && player = @request.auth.id",
+    "name": "probe_lobby_presence",
+    "type": "base",
+    "fields": [
+      {
+        "id": "relation910101",
+        "name": "player",
+        "type": "relation",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "collectionId": "pbc_probe_users",
+        "cascadeDelete": true,
+        "minSelect": 0,
+        "maxSelect": 1
+      },
+      {
+        "id": "select91010001",
+        "name": "location",
+        "type": "select",
+        "required": true,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "maxSelect": 1,
+        "values": [
+          "lobby",
+          "game"
+        ]
+      },
+      {
+        "id": "relation910102",
+        "name": "game",
+        "type": "relation",
+        "required": false,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "collectionId": "pbc_1000000001",
+        "cascadeDelete": true,
+        "minSelect": 0,
+        "maxSelect": 1
+      },
+      {
+        "id": "autodate91010001",
+        "name": "last_seen",
+        "type": "autodate",
+        "required": false,
+        "system": false,
+        "presentable": false,
+        "hidden": false,
+        "onCreate": true,
+        "onUpdate": true
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX idx_probe_lobby_presence_player ON probe_lobby_presence (player)",
+      "CREATE INDEX idx_probe_lobby_presence_location_last_seen ON probe_lobby_presence (location, last_seen)"
     ],
     "system": false
   }

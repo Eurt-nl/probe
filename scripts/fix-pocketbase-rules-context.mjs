@@ -1,7 +1,7 @@
 import process from 'node:process';
 import PocketBase from 'pocketbase';
 
-const pbUrl = process.env.PB_URL || 'https://pb.9621da15.cloud';
+const pbUrl = process.env.PB_URL || 'https://pb.pitch-putt.live';
 const adminEmail = process.env.PB_ADMIN_EMAIL;
 const adminPassword = process.env.PB_ADMIN_PASSWORD;
 
@@ -43,6 +43,10 @@ async function ensureSecretWordsCollection(collections) {
   if (!games) {
     throw new Error('probe_games collection missing; cannot create probe_secret_words');
   }
+  const users = collections.find((c) => c.name === 'probe_users');
+  if (!users) {
+    throw new Error('probe_users collection missing; cannot create probe_secret_words');
+  }
 
   await pb.collections.create({
     name: 'probe_secret_words',
@@ -75,7 +79,7 @@ async function ensureSecretWordsCollection(collections) {
         system: false,
         presentable: false,
         hidden: false,
-        collectionId: '_pb_users_auth_',
+        collectionId: users.id,
         cascadeDelete: true,
         minSelect: 0,
         maxSelect: 1

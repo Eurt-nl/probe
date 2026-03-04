@@ -13,10 +13,12 @@
             </div>
           </div>
           <div class="row q-gutter-sm">
-            <q-btn color="primary" label="Refresh" @click="refreshRemote" />
+            <q-btn color="secondary" outline label="Lobby" @click="router.push({ name: 'home' })" />
+            <q-btn color="primary" label="Refresh" @click="refreshRemoteSafely" />
             <q-btn
+              v-if="remoteGame?.status === 'lobby'"
               color="accent"
-              label="Start remote spel"
+              label="Start spel"
               :disable="!isOwner || (remotePlayers.length < 2)"
               @click="onStartRemote"
             />
@@ -25,114 +27,88 @@
       </q-card>
 
       <div class="game-layout">
-        <div class="layout-left">
-          <q-card
-            v-for="player in displayPlayers"
-            :key="player.id"
-            flat
-            bordered
-            class="q-mb-sm player-card"
-            :class="`player-card--${player.seat_index % 4}`"
-          >
-            <q-card-section class="player-section">
-              <div class="player-row-1">
-                <div class="player-avatar">
-                  {{ avatarText(player.display_name) }}
+        <div class="layout-top">
+          <div class="layout-players">
+            <q-card
+              v-for="player in displayPlayers"
+              :key="player.id"
+              flat
+              bordered
+              class="player-card"
+              :class="`player-card--${player.seat_index % 4}`"
+            >
+              <q-card-section class="player-section">
+                <div class="player-row-1">
+                  <div class="player-avatar">
+                    <img
+                      v-if="player.avatar_url"
+                      :src="player.avatar_url"
+                      :alt="`Avatar ${player.display_name}`"
+                      class="player-avatar-image"
+                    />
+                    <span v-else>{{ avatarText(player.display_name) }}</span>
+                  </div>
+                  <div class="player-name">{{ player.display_name }}</div>
+                  <q-badge
+                    v-if="remoteGame?.turn_player === player.player"
+                    color="primary"
+                    text-color="white"
+                    label="Aan zet"
+                  />
+                  <div class="player-score-value">{{ player.score }}</div>
                 </div>
-                <div class="player-name">{{ player.display_name }}</div>
-                <q-badge
-                  v-if="remoteGame?.turn_player === player.player"
-                  color="primary"
-                  text-color="white"
-                  label="Aan zet"
-                />
-                <div class="player-score-value">{{ player.score }}</div>
-              </div>
 
-              <div class="player-row-2">
-                <div class="word-row">
+                <div class="player-row-2">
+                  <div class="word-row">
                   <div class="word-track">
                     <div v-for="(slot, index) in boardSlots(player)" :key="`${player.id}-${index}`" class="slot-cell">
-                      <q-chip
-                        square
-                        dense
-                        :color="slot ? 'white' : 'grey-3'"
-                        :text-color="slot ? 'dark' : 'grey-7'"
-                        class="slot-chip"
+                      <div
+                        class="probe-slot"
+                        :class="[
+                          slot ? 'probe-slot--open' : 'probe-slot--closed',
+                          `probe-slot--player-${player.seat_index % 4}`
+                        ]"
                       >
-                        {{ slot ?? '•' }}
-                      </q-chip>
+                        <div class="probe-slot-top">{{ slot ? '' : (index + 1) }}</div>
+                        <div class="probe-slot-char">{{ slotDisplay(slot) }}</div>
+                        <div class="probe-slot-bottom">{{ slot ? slotValue(index) : '' }}</div>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div class="player-actions">
-                  <q-btn
-                    v-if="canSuperGuessOn(player)"
-                    color="warning"
-                    text-color="black"
-                    icon="star"
-                    square
-                    size="md"
-                    @click="openSuperGuessModal(player)"
-                  />
-                  <q-btn
-                    v-if="canGuessOn(player)"
-                    color="primary"
-                    label="Gok"
-                    @click="openGuessModal(player)"
-                  />
+                  <div class="player-actions">
+                    <q-btn
+                      v-if="canSuperGuessOn(player)"
+                      color="warning"
+                      text-color="black"
+                      icon="star"
+                      square
+                      size="md"
+                      @click="openSuperGuessModal(player)"
+                    />
+                    <q-btn
+                      v-if="canGuessOn(player)"
+                      color="primary"
+                      label="Gok"
+                      @click="openGuessModal(player)"
+                    />
+                  </div>
                 </div>
-              </div>
-            </q-card-section>
-          </q-card>
-        </div>
+              </q-card-section>
+            </q-card>
+          </div>
 
-        <div class="layout-right">
-          <q-card flat bordered class="q-mb-md">
-            <q-card-section>
-              <div class="text-h6">Remote Guess log</div>
-              <q-list separator>
-                <q-item v-for="entry in pagedRemoteGuesses" :key="entry.id" dense>
-                  <q-item-section avatar>
-                    <q-icon :name="entry.success ? 'check_circle' : 'cancel'" :color="entry.success ? 'positive' : 'negative'" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>
-                      {{ playerNameByUserId(entry.actor) }} vroeg aan {{ playerNameByUserId(entry.target_player) }} naar {{ guessText(entry) }}
-                    </q-item-label>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-              <div class="row justify-center q-mt-sm" v-if="guessLogTotalPages > 1">
-                <q-pagination v-model="guessLogPage" :max="guessLogTotalPages" :max-pages="6" direction-links />
-              </div>
-            </q-card-section>
-          </q-card>
-
-          <q-card flat bordered>
-            <q-card-section>
-              <div class="text-h6">Spelchat</div>
-              <q-list separator>
-                <q-item v-for="entry in sortedChatMessages" :key="entry.id" dense>
-                  <q-item-section>
-                    <q-item-label>
-                      <strong>{{ entry.actor_name }}</strong>: {{ entry.message }}
-                    </q-item-label>
-                    <q-item-label caption>{{ formatDateTime(entry.message_at) }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-              <div v-if="!sortedChatMessages.length" class="text-caption text-grey-7 q-mt-sm">
-                Nog geen chatberichten.
-              </div>
+          <q-card flat bordered class="chat-panel">
+            <q-card-section class="chat-panel-section">
+              <div class="text-h6">Hasperen</div>
               <div class="row q-col-gutter-sm q-mt-sm">
                 <div class="col">
                   <q-input
                     v-model="chatDraft"
                     dense
                     maxlength="500"
-                    label="Typ een bericht"
+                    label="Typ een bericht in Hasperen"
                     input-class="no-zoom-input"
                     @keyup.enter="onSendChat"
                   />
@@ -141,9 +117,40 @@
                   <q-btn color="primary" label="Verstuur" :disable="!canSendChat || !chatDraft.trim()" @click="onSendChat" />
                 </div>
               </div>
+              <div class="chat-list-wrap q-mt-sm">
+                <q-list separator>
+                  <q-item v-for="entry in sortedChatMessages" :key="entry.id" dense>
+                    <q-item-section>
+                      <q-item-label>
+                        <strong>{{ entry.actor_name }}</strong>: {{ entry.message }}
+                      </q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+                <div v-if="!sortedChatMessages.length" class="text-caption text-grey-7">
+                  Nog geen berichten.
+                </div>
+              </div>
             </q-card-section>
           </q-card>
         </div>
+
+        <q-card flat bordered class="game-log-panel">
+          <q-card-section>
+            <div class="text-h6">Game log</div>
+            <div class="game-log-cards">
+              <q-card v-for="entry in gameLogCardEntries" :key="entry.id" flat bordered class="game-log-card">
+                <q-card-section class="row items-start no-wrap q-gutter-sm">
+                  <q-icon :name="entry.icon" :color="entry.color" size="22px" />
+                  <div class="text-body2">{{ entry.text }}</div>
+                </q-card-section>
+              </q-card>
+            </div>
+            <div v-if="!gameLogCardEntries.length" class="text-caption text-grey-7 q-mt-sm">
+              Nog geen game log items.
+            </div>
+          </q-card-section>
+        </q-card>
       </div>
     </div>
 
@@ -156,14 +163,21 @@
           </div>
         </q-card-section>
         <q-card-section>
-          <q-input
-            v-model="remoteGuessChar"
-            label="Letter of dot"
-            hint="1 teken: A-Z of ."
-            maxlength="1"
-            input-class="no-zoom-input"
-            autofocus
-          />
+          <div class="text-caption q-mb-sm">Kies 1 teken: A-Z of .</div>
+          <div class="guess-char-grid">
+            <q-btn
+              v-for="char in guessCharOptions"
+              :key="`guess-char-${char}`"
+              dense
+              square
+              no-caps
+              :label="char"
+              :color="remoteGuessChar === char ? 'primary' : 'grey-3'"
+              :text-color="remoteGuessChar === char ? 'white' : 'dark'"
+              class="guess-char-btn"
+              @click="remoteGuessChar = char"
+            />
+          </div>
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat label="Annuleren" v-close-popup />
@@ -184,7 +198,7 @@
           <q-input
             v-model="superGuessWord"
             label="Heel woord"
-            hint="8-12 letters, zonder stippen"
+            hint="7-12 letters, zonder stippen"
             maxlength="12"
             input-class="no-zoom-input"
             autofocus
@@ -224,30 +238,44 @@
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="activityCardDialogOpen" :persistent="activityCardRequiresAck">
+    <q-dialog v-model="turnAlertDialogOpen" persistent>
       <q-card class="dialog-card">
         <q-card-section>
-          <div class="text-h6">Activity card</div>
-          <div class="text-body2">{{ activityCardDialogText }}</div>
+          <div class="text-h6">Aan zet</div>
+          <div class="text-body2" style="white-space: pre-line">{{ turnAlertDialogText }}</div>
         </q-card-section>
-        <q-card-actions align="right" v-if="activityCardRequiresAck">
-          <q-btn color="primary" label="OK" @click="closeActivityCardDialog" />
+        <q-card-actions align="right">
+          <q-btn color="primary" label="OK" @click="turnAlertDialogOpen = false" />
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <q-dialog v-model="finalPhaseDialogOpen" persistent>
+      <q-card class="dialog-card">
+        <q-card-section>
+          <div class="text-h6">Eindfase</div>
+          <div class="text-body2">{{ finalPhaseDialogText }}</div>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn color="primary" label="OK" @click="finalPhaseDialogOpen = false" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useSessionStore } from '@/stores/sessionStore';
-import type { RemoteChatMessage, RemoteGame, RemoteGuess, RemotePlayer, RemoteTurn } from '@/services/gameSync';
+import type { RemoteChatMessage, RemoteGame, RemoteGuess, RemotePlayer } from '@/services/gameSync';
 import {
-  createRemoteTurnForCurrentPlayer,
-  getActiveRemoteTurn,
+  getLatestFinalPhaseNotification,
+  getLatestTurnNotification,
   getRemoteGame,
+  listTurnStartNotifications,
   listRemoteChatMessages,
   listRemoteGuesses,
   listRemotePlayers,
@@ -258,6 +286,7 @@ import {
 } from '@/services/gameSync';
 import VersionBanner from '@/components/VersionBanner.vue';
 import { useSwUpdate } from '@/services/swUpdate';
+import { settings } from '@/config/settings';
 
 const route = useRoute();
 const router = useRouter();
@@ -279,21 +308,29 @@ const superGuessDialogOpen = ref(false);
 const superGuessWord = ref('');
 const pendingSuperTargetUserId = ref('');
 const pendingSuperTargetName = ref('');
+const turnAlertDialogOpen = ref(false);
+const turnAlertDialogText = ref('');
+const finalPhaseDialogOpen = ref(false);
+const finalPhaseDialogText = ref('');
 const finishedDialogOpen = ref(false);
 const finishedHandled = ref(false);
-const activityCardDialogOpen = ref(false);
-const activityCardDialogText = ref('');
-const activityCardRequiresAck = ref(false);
-const guessLogPage = ref(1);
-const guessLogPerPage = 2;
-const previousTurnRecordId = ref('');
-const turnRecordWatcherInitialized = ref(false);
+const remoteTurnNotifications = ref<Array<{ id: string; body: string; sent_at?: string }>>([]);
+const lastTurnNotificationId = ref('');
+const lastFinalPhaseNotificationId = ref('');
 
 let stopSubscription: (() => void) | null = null;
-let activityDialogTimer: ReturnType<typeof setTimeout> | null = null;
+let refreshInFlight = false;
+let refreshQueued = false;
 
 const isOwner = computed(() => remoteGame.value?.owner === session.userId);
 const isMyTurn = computed(() => Boolean(session.userId) && remoteGame.value?.turn_player === session.userId);
+const slotValues = Object.freeze([5, 10, 15, 15, 10, 5, 5, 10, 15, 15, 10, 5]);
+const guessCharOptions = Object.freeze([
+  'A', 'B', 'C', 'D', 'E', 'F', 'G',
+  'H', 'I', 'J', 'K', 'L', 'M', 'N',
+  'O', 'P', 'Q', 'R', 'S', 'T', 'U',
+  'V', 'W', 'X', 'Y', 'Z', '.'
+]);
 const isCurrentUserInGame = computed(() =>
   Boolean(session.userId) && remotePlayers.value.some((player) => player.player === session.userId)
 );
@@ -333,11 +370,38 @@ const sortedRemoteGuesses = computed(() =>
     return b.id.localeCompare(a.id);
   })
 );
-const guessLogTotalPages = computed(() => Math.max(1, Math.ceil(sortedRemoteGuesses.value.length / guessLogPerPage)));
-const pagedRemoteGuesses = computed(() => {
-  const start = (guessLogPage.value - 1) * guessLogPerPage;
-  return sortedRemoteGuesses.value.slice(start, start + guessLogPerPage);
+const sortedTurnNotifications = computed(() =>
+  [...remoteTurnNotifications.value].sort((a, b) => {
+    const aTime = Date.parse(a.sent_at || '');
+    const bTime = Date.parse(b.sent_at || '');
+    const aValid = Number.isFinite(aTime);
+    const bValid = Number.isFinite(bTime);
+    if (aValid && bValid && bTime !== aTime) return bTime - aTime;
+    if (aValid !== bValid) return bValid ? 1 : -1;
+    return b.id.localeCompare(a.id);
+  })
+);
+const gameLogEntries = computed(() => {
+  const guessEntries = sortedRemoteGuesses.value.map((entry) => ({
+    id: `guess-${entry.id}`,
+    ts: Date.parse(entry.guess_at || entry.created || '') || 0,
+    icon: entry.success ? 'check_circle' : 'cancel',
+    color: entry.success ? 'positive' : 'negative',
+    text: `${playerNameByUserId(entry.actor)} vroeg aan ${playerNameByUserId(entry.target_player)} naar ${guessText(entry)}`
+  }));
+  const turnEntries = sortedTurnNotifications.value.map((entry) => ({
+    id: `turn-${entry.id}`,
+    ts: Date.parse(entry.sent_at || '') || 0,
+    icon: 'autorenew',
+    color: 'primary',
+    text: `Beurtwissel: ${entry.body || 'Activity card getrokken'}`
+  }));
+  return [...guessEntries, ...turnEntries].sort((a, b) => {
+    if (b.ts !== a.ts) return b.ts - a.ts;
+    return b.id.localeCompare(a.id);
+  });
 });
+const gameLogCardEntries = computed(() => [...gameLogEntries.value]);
 const sortedChatMessages = computed(() =>
   [...remoteChatMessages.value].sort((a, b) => {
     const aTime = Date.parse(a.message_at || '');
@@ -380,39 +444,44 @@ async function refreshRemote(): Promise<void> {
   if (!gameId.value) return;
 
   remoteGame.value = await getRemoteGame(gameId.value);
-  let [players, guesses, chat, activeTurn] = await Promise.all([
+  const [players, guesses, chat, latestTurnNotification, turnNotifications, latestFinalPhaseNotification] = await Promise.all([
     listRemotePlayers(gameId.value),
     listRemoteGuesses(gameId.value),
     listRemoteChatMessages(gameId.value).catch(() => []),
-    getActiveRemoteTurn(gameId.value).catch(() => null)
+    getLatestTurnNotification(gameId.value).catch(() => null),
+    listTurnStartNotifications(gameId.value).catch(() => []),
+    getLatestFinalPhaseNotification(gameId.value).catch(() => null)
   ]);
   remotePlayers.value = players;
   remoteGuesses.value = guesses;
   remoteChatMessages.value = chat;
-
-  // Fallback: if no valid active turn record exists yet, let the player who is now on turn create it.
-  const localUserId = session.userId;
-  const currentTurnPlayer = String(remoteGame.value.turn_player ?? '');
-  const localIsParticipant = Boolean(localUserId) && players.some((player) => player.player === localUserId);
-  const activeTurnMatchesGame = Boolean(activeTurn && activeTurn.player === currentTurnPlayer);
-  if (
-    remoteGame.value.status === 'active' &&
-    localIsParticipant &&
-    !activeTurnMatchesGame
-  ) {
-    try {
-      await createRemoteTurnForCurrentPlayer(gameId.value, currentTurnPlayer);
-      activeTurn = await getActiveRemoteTurn(gameId.value).catch(() => activeTurn);
-    } catch (error) {
-      $q.notify({ type: 'warning', message: `Turn synchronisatie mislukt: ${errorMessage(error)}` });
-    }
-  }
-
+  remoteTurnNotifications.value = turnNotifications;
   maybeShowFinishedDialog();
-  maybeShowActivityCardDialog(activeTurn);
+  maybeShowActivityCardDialog(latestTurnNotification);
+  maybeShowFinalPhaseDialog(latestFinalPhaseNotification);
 
   if (!targetUserId.value) {
     targetUserId.value = remotePlayers.value.find((player) => player.player !== session.userId)?.player ?? '';
+  }
+}
+
+async function refreshRemoteSafely(): Promise<void> {
+  if (refreshInFlight) {
+    refreshQueued = true;
+    return;
+  }
+
+  refreshInFlight = true;
+  try {
+    await refreshRemote();
+  } catch (error) {
+    console.error('refreshRemote failed', error);
+  } finally {
+    refreshInFlight = false;
+    if (refreshQueued) {
+      refreshQueued = false;
+      void refreshRemoteSafely();
+    }
   }
 }
 
@@ -431,8 +500,14 @@ async function setupSubscription(): Promise<void> {
   if (!gameId.value) return;
 
   stopSubscription = await subscribeRemoteGame(gameId.value, () => {
-    void refreshRemote();
+    void refreshRemoteSafely();
   });
+}
+
+function onVisibilityChange(): void {
+  if (document.visibilityState === 'visible') {
+    void refreshRemoteSafely();
+  }
 }
 
 async function onSubmitGuess(): Promise<void> {
@@ -470,8 +545,8 @@ async function onSubmitSuperGuess(): Promise<void> {
     return;
   }
   const word = superGuessWord.value.trim().toUpperCase();
-  if (!/^[A-Z]{8,12}$/.test(word)) {
-    $q.notify({ type: 'warning', message: 'Supergok moet 8 t/m 12 letters bevatten (zonder stippen)' });
+  if (!/^[A-Z]{7,12}$/.test(word)) {
+    $q.notify({ type: 'warning', message: 'Supergok moet 7 t/m 12 letters bevatten (zonder stippen)' });
     return;
   }
 
@@ -526,10 +601,20 @@ function boardSlots(player: RemotePlayer): Array<string | null> {
   return [...slots, ...Array.from({ length: 12 - slots.length }, () => null)];
 }
 
+function slotDisplay(slot: string | null): string {
+  if (!slot) return '';
+  return slot === '.' ? '•' : slot;
+}
+
+function slotValue(index: number): number {
+  return slotValues[index] ?? 0;
+}
+
 function canGuessOn(player: RemotePlayer): boolean {
   if (!session.userId || !remoteGame.value) return false;
   if (remoteGame.value.status !== 'active') return false;
   if (!isMyTurn.value) return false;
+  if (player.is_word_revealed) return false;
   return player.player !== session.userId;
 }
 
@@ -537,6 +622,8 @@ function canSuperGuessOn(player: RemotePlayer): boolean {
   if (!session.userId || !remoteGame.value) return false;
   if (remoteGame.value.status !== 'active') return false;
   if (!isCurrentUserInGame.value) return false;
+  if (player.is_word_revealed) return false;
+  if (Number(player.hidden_count ?? 0) < 5) return false;
   return player.player !== session.userId;
 }
 
@@ -560,17 +647,6 @@ function triggerUpdate(): void {
   void updateApp();
 }
 
-function formatDateTime(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '-';
-  const dd = String(date.getDate()).padStart(2, '0');
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const yyyy = String(date.getFullYear());
-  const hh = String(date.getHours()).padStart(2, '0');
-  const min = String(date.getMinutes()).padStart(2, '0');
-  return `${dd}-${mm}-${yyyy} ${hh}:${min}`;
-}
-
 function maybeShowFinishedDialog(): void {
   if (!isCurrentUserInGame.value) return;
   if (remoteGame.value?.status !== 'finished') return;
@@ -581,48 +657,24 @@ function maybeShowFinishedDialog(): void {
   finishedDialogOpen.value = true;
 }
 
-function closeActivityCardDialog(): void {
-  activityCardDialogOpen.value = false;
-  if (activityDialogTimer) {
-    clearTimeout(activityDialogTimer);
-    activityDialogTimer = null;
-  }
+function maybeShowActivityCardDialog(notification: { id: string; body: string } | null): void {
+  if (!session.userId || !isCurrentUserInGame.value || !notification) return;
+  if (notification.id === lastTurnNotificationId.value) return;
+  lastTurnNotificationId.value = notification.id;
+  if (remoteGame.value?.turn_player !== session.userId) return;
+
+  turnAlertDialogText.value = notification.body?.trim()
+    ? `${notification.body}\n\nJij bent aan de beurt.`
+    : 'Jij bent aan de beurt.';
+  turnAlertDialogOpen.value = true;
 }
 
-function maybeShowActivityCardDialog(activeTurn: RemoteTurn | null): void {
-  if (!session.userId || !isCurrentUserInGame.value || !activeTurn) return;
-
-  if (!turnRecordWatcherInitialized.value) {
-    previousTurnRecordId.value = activeTurn.id;
-    turnRecordWatcherInitialized.value = true;
-    openActivityCardDialog(activeTurn);
-    return;
-  }
-
-  if (activeTurn.id === previousTurnRecordId.value) return;
-  previousTurnRecordId.value = activeTurn.id;
-
-  openActivityCardDialog(activeTurn);
-}
-
-function openActivityCardDialog(activeTurn: RemoteTurn): void {
-  const cardLabel = activeTurn.activity_card_label ?? 'Geen kaart';
-  activityCardDialogText.value = `${activeTurn.player_name} trok: ${cardLabel}`;
-
-  const isMyTurnNow = activeTurn.player === session.userId;
-  activityCardRequiresAck.value = isMyTurnNow;
-  activityCardDialogOpen.value = true;
-
-  if (activityDialogTimer) {
-    clearTimeout(activityDialogTimer);
-    activityDialogTimer = null;
-  }
-  if (!isMyTurnNow) {
-    activityDialogTimer = setTimeout(() => {
-      activityCardDialogOpen.value = false;
-      activityDialogTimer = null;
-    }, 2500);
-  }
+function maybeShowFinalPhaseDialog(notification: { id: string; body: string } | null): void {
+  if (!session.userId || !isCurrentUserInGame.value || !notification) return;
+  if (notification.id === lastFinalPhaseNotificationId.value) return;
+  lastFinalPhaseNotificationId.value = notification.id;
+  finalPhaseDialogText.value = notification.body || 'Het einde nadert. Er is nog een woord niet geraden, iedereen krijgt nog maximaal 2 beurten.';
+  finalPhaseDialogOpen.value = true;
 }
 
 function onAcknowledgeFinished(): void {
@@ -631,15 +683,12 @@ function onAcknowledgeFinished(): void {
   router.push({ name: 'home' });
 }
 
-watch(guessLogTotalPages, (totalPages) => {
-  if (guessLogPage.value > totalPages) {
-    guessLogPage.value = totalPages;
-  }
-});
-
 onMounted(async () => {
-  await refreshRemote();
-  await setupSubscription();
+  await refreshRemoteSafely();
+  if (settings.realtimeEnabled) {
+    await setupSubscription();
+  }
+  document.addEventListener('visibilitychange', onVisibilityChange);
 });
 
 onUnmounted(() => {
@@ -647,10 +696,7 @@ onUnmounted(() => {
     stopSubscription();
     stopSubscription = null;
   }
-  if (activityDialogTimer) {
-    clearTimeout(activityDialogTimer);
-    activityDialogTimer = null;
-  }
+  document.removeEventListener('visibilitychange', onVisibilityChange);
 });
 </script>
 
@@ -671,15 +717,55 @@ onUnmounted(() => {
   border-left: 8px solid #e53935;
 }
 
+.player-card {
+  overflow: hidden;
+}
+
 .game-layout {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.layout-left,
-.layout-right {
+.layout-top,
+.layout-players {
   min-width: 0;
+}
+
+.layout-top {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chat-panel {
+  min-width: 0;
+}
+
+.chat-panel-section {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.game-log-panel {
+  min-width: 0;
+}
+
+.game-log-cards {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 4px;
+}
+
+.game-log-card {
+  min-width: 260px;
+  max-width: 320px;
+  flex: 0 0 auto;
 }
 
 .player-section {
@@ -707,6 +793,13 @@ onUnmounted(() => {
   font-size: 17px;
   color: #404040;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.player-avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .player-name {
@@ -724,11 +817,14 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   min-width: 0;
+  width: 100%;
 }
 
 .word-row {
   flex: 1;
   min-width: 0;
+  width: 100%;
+  max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
@@ -737,21 +833,91 @@ onUnmounted(() => {
 .word-track {
   display: flex;
   flex-wrap: nowrap;
-  gap: 4px;
+  gap: 6px;
   min-width: max-content;
 }
 
-.slot-chip {
+.slot-cell {
+  width: 28px;
   min-width: 28px;
-  justify-content: center;
-  font-weight: 600;
-  margin: 0;
+  max-width: 28px;
+  flex: 0 0 28px;
+}
+
+.probe-slot {
+  width: 28px;
+  height: 40px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  position: relative;
+  display: block;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.probe-slot-top,
+.probe-slot-bottom {
+  font-size: 9px;
+  line-height: 1;
+  position: absolute;
+  left: 0;
+  width: 100%;
+  text-align: center;
+}
+
+.probe-slot-top {
+  top: 1px;
+}
+
+.probe-slot-bottom {
+  bottom: 1px;
+}
+
+.probe-slot-char {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.probe-slot--closed {
+  color: rgba(255, 255, 255, 0.96);
+}
+
+.probe-slot--open {
+  background: #ffffff;
+  color: #111;
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+.probe-slot--player-0.probe-slot--closed {
+  background: #1e88e5;
+}
+
+.probe-slot--player-1.probe-slot--closed {
+  background: #43a047;
+}
+
+.probe-slot--player-2.probe-slot--closed {
+  background: #fb8c00;
+}
+
+.probe-slot--player-3.probe-slot--closed {
+  background: #e53935;
 }
 
 .player-actions {
   display: flex;
   gap: 8px;
   flex-shrink: 0;
+  min-height: 40px;
+  min-width: 132px;
+  justify-content: flex-end;
 }
 
 :deep(.no-zoom-input) {
@@ -762,7 +928,28 @@ onUnmounted(() => {
   width: min(92vw, 520px);
 }
 
+.guess-char-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.guess-char-btn {
+  min-height: 34px;
+}
+
+.chat-list-wrap {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
 @media (max-width: 430px) {
+  .word-track {
+    gap: 4px;
+  }
+
   .player-avatar {
     width: 38px;
     height: 38px;
@@ -781,6 +968,7 @@ onUnmounted(() => {
     align-items: flex-start;
     flex-direction: column;
     gap: 6px;
+    width: 100%;
   }
 
   .player-actions {
@@ -788,24 +976,63 @@ onUnmounted(() => {
     justify-content: flex-end;
   }
 
-  .slot-chip {
+  .slot-cell {
+    width: 22px;
     min-width: 22px;
-    font-size: 12px;
+    max-width: 22px;
+    flex-basis: 22px;
+  }
+
+  .guess-char-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .probe-slot {
+    width: 22px;
+    height: 34px;
+  }
+
+  .probe-slot-char {
+    font-size: 11px;
+  }
+
+  .probe-slot-top,
+  .probe-slot-bottom {
+    font-size: 8px;
   }
 }
 
 @media (min-width: 768px) {
-  .game-layout {
-    flex-direction: row;
-    align-items: flex-start;
+  .layout-top {
+    display: grid;
+    grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+    align-items: stretch;
   }
 
-  .layout-left {
-    width: 60%;
+  .layout-players {
+    height: 480px;
+    max-height: 480px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
   }
 
-  .layout-right {
-    width: 40%;
+  .player-card {
+    height: calc((480px - 18px) / 4);
+    min-height: calc((480px - 18px) / 4);
+    max-height: calc((480px - 18px) / 4);
+    margin: 0;
+  }
+
+  .player-card :deep(.q-card__section) {
+    padding: 10px 12px;
+  }
+
+  .chat-panel {
+    height: 480px;
+    max-height: 480px;
   }
 }
 </style>

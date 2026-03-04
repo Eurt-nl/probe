@@ -3,7 +3,7 @@ import path from 'node:path';
 import process from 'node:process';
 import PocketBase from 'pocketbase';
 
-const pbUrl = process.env.PB_URL || 'https://pb.9621da15.cloud';
+const pbUrl = process.env.PB_URL || 'https://pb.pitch-putt.live';
 const adminEmail = process.env.PB_ADMIN_EMAIL;
 const adminPassword = process.env.PB_ADMIN_PASSWORD;
 

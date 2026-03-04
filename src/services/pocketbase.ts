@@ -9,14 +9,16 @@ pb.authStore.onChange(() => {
 });
 
 export const collections = {
-  users: 'users',
+  users: 'probe_users',
   games: 'probe_games',
   players: 'probe_players',
   secretWords: 'probe_secret_words',
   turns: 'probe_turns',
   guesses: 'probe_guesses',
   chatMessages: 'probe_chat_messages',
+  lobbyChatMessages: 'probe_lobby_chat_messages',
+  lobbyPresence: 'probe_lobby_presence',
   activityDeck: 'probe_activity_cards',
-  appVersions: 'app_versions',
-  notifications: 'in_app_notifications'
+  appVersions: 'probe_app_versions',
+  notifications: 'probe_in_app_notifications'
 } as const;

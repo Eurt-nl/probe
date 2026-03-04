@@ -10,12 +10,14 @@
     "seed:cards": "node scripts/seed-activity-cards.mjs",
     "referee:remote": "node scripts/remote-referee.mjs",
     "fix:pb-required": "node scripts/fix-pocketbase-required-fields.mjs",
-    "fix:pb-rules": "node scripts/fix-pocketbase-rules-context.mjs"
+    "fix:pb-rules": "node scripts/fix-pocketbase-rules-context.mjs",
+    "migrate:pb-probe-users": "node scripts/migrate-probe-collections.mjs"
   },
   "dependencies": {
     "@quasar/extras": "^1.16.16",
     "eventsource": "^4.1.0",
     "pinia": "^2.3.1",
+    "pngjs": "^7.0.0",
     "pocketbase": "latest",
     "quasar": "^2.17.7",
     "vue": "^3.5.13",

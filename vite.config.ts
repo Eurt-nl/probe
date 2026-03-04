@@ -15,17 +15,19 @@ export default defineConfig({
     }),
     VitePWA({
       registerType: 'prompt',
-      includeAssets: ['favicon.svg', 'robots.txt'],
+      includeAssets: ['favicon-32x32.png', 'apple-touch-icon.png', 'logo-wordcourt.png', 'robots.txt'],
       manifest: {
-        name: 'Probe Word Game',
-        short_name: 'Probe',
+        name: 'WordCourt',
+        short_name: 'WordCourt',
         start_url: '/',
         display: 'standalone',
         background_color: '#f5f2ea',
         theme_color: '#0e5f73',
-        description: 'Digital Probe word game with PocketBase backend',
+        description: 'WordCourt multiplayer word game with PocketBase backend',
         icons: [
-          { src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml' }
+          { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png' },
+          { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
         ]
       },
       workbox: {

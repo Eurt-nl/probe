@@ -1,7 +1,7 @@
 import process from 'node:process';
 import PocketBase from 'pocketbase';
 
-const pbUrl = process.env.PB_URL || 'https://pb.9621da15.cloud';
+const pbUrl = process.env.PB_URL || 'https://pb.pitch-putt.live';
 const adminEmail = process.env.PB_ADMIN_EMAIL;
 const adminPassword = process.env.PB_ADMIN_PASSWORD;
 
@@ -15,8 +15,8 @@ const pb = new PocketBase(pbUrl);
 const requiredFixes = {
   probe_players: ['seat_index', 'score', 'dot_count', 'is_word_revealed', 'misspelled'],
   probe_guesses: ['is_interruptive', 'success', 'points_delta'],
-  in_app_notifications: ['is_read', 'sent_ntfy'],
-  app_versions: ['is_latest']
+  probe_in_app_notifications: ['is_read', 'sent_ntfy'],
+  probe_app_versions: ['is_latest']
 };
 
 async function main() {

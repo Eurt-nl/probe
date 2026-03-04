@@ -45,19 +45,19 @@ Override via env variables:
 ## PocketBase schema
 
 - See `docs/pocketbase-schema.md`.
-- Direct import JSON (zonder `users`): `pocketbase/collections.import.json`
+- Direct import JSON: `pocketbase/collections.import.json`
 
 ### PocketBase import
 
 1. Open PocketBase Admin UI.
 2. Go to `Settings` -> `Import collections`.
 3. Upload `pocketbase/collections.import.json`.
-4. Keep `users` as-is (this import only creates the non-user collections).
+4. This import also includes the auth collection `probe_users` used by the app.
 5. If you imported an older version earlier, re-import this file so `probe_secret_words` is added.
 6. If lobby/join fails with `Cannot be blank` on numeric/bool fields, run:
 
 ```bash
-PB_URL=https://pb.9621da15.cloud \
+PB_URL=https://pb.pitch-putt.live \
 PB_ADMIN_EMAIL=you@example.com \
 PB_ADMIN_PASSWORD=your_password \
 npm run fix:pb-required
@@ -66,7 +66,7 @@ npm run fix:pb-required
 7. If you see `missing or invalid collection context`, run:
 
 ```bash
-PB_URL=https://pb.9621da15.cloud \
+PB_URL=https://pb.pitch-putt.live \
 PB_ADMIN_EMAIL=you@example.com \
 PB_ADMIN_PASSWORD=your_password \
 npm run fix:pb-rules
@@ -82,7 +82,7 @@ npm run fix:pb-rules
 `probe_activity_cards` can be seeded with:
 
 ```bash
-PB_URL=https://pb.9621da15.cloud \
+PB_URL=https://pb.pitch-putt.live \
 PB_ADMIN_EMAIL=you@example.com \
 PB_ADMIN_PASSWORD=your_password \
 npm run seed:cards
@@ -111,7 +111,7 @@ Seed source file:
 Run this process on a server/VPS/container so remote games are validated automatically:
 
 ```bash
-PB_URL=https://pb.9621da15.cloud \
+PB_URL=https://pb.pitch-putt.live \
 PB_ADMIN_EMAIL=you@example.com \
 PB_ADMIN_PASSWORD=your_password \
 npm run referee:remote

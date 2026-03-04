@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { pb } from '@/services/pocketbase';
+import { collections, pb } from '@/services/pocketbase';
 
 interface Credentials {
   email: string;
@@ -8,6 +8,12 @@ interface Credentials {
 
 interface RegisterPayload extends Credentials {
   name: string;
+}
+
+interface ProfileUpdatePayload {
+  name: string;
+  avatarFile?: File | null;
+  clearAvatar?: boolean;
 }
 
 export const useSessionStore = defineStore('session', {
@@ -27,6 +33,9 @@ export const useSessionStore = defineStore('session', {
     }
   },
   actions: {
+    normalizeEmail(email: string): string {
+      return email.trim().toLowerCase();
+    },
     init(): void {
       this.user = pb.authStore.model as Record<string, unknown> | null;
       this.token = pb.authStore.token;
@@ -37,24 +46,47 @@ export const useSessionStore = defineStore('session', {
       });
     },
     async login(payload: Credentials): Promise<void> {
-      await pb.collection('users').authWithPassword(payload.email, payload.password);
+      await pb
+        .collection(collections.users)
+        .authWithPassword(this.normalizeEmail(payload.email), payload.password);
       this.user = pb.authStore.model as Record<string, unknown> | null;
       this.token = pb.authStore.token;
     },
     async register(payload: RegisterPayload): Promise<void> {
-      await pb.collection('users').create({
-        email: payload.email,
+      const normalizedEmail = this.normalizeEmail(payload.email);
+      await pb.collection(collections.users).create({
+        email: normalizedEmail,
         password: payload.password,
         passwordConfirm: payload.password,
         name: payload.name,
         display_name: payload.name
       });
-      await this.login(payload);
+      await this.login({ email: normalizedEmail, password: payload.password });
     },
     logout(): void {
       pb.authStore.clear();
       this.user = null;
       this.token = '';
+    },
+    async updateProfile(payload: ProfileUpdatePayload): Promise<void> {
+      if (!this.userId) {
+        throw new Error('Niet ingelogd');
+      }
+
+      const body = new FormData();
+      body.set('name', payload.name);
+      body.set('display_name', payload.name);
+
+      // PocketBase clears file fields when explicitly set to empty.
+      if (payload.clearAvatar) {
+        body.set('avatar', '');
+      } else if (payload.avatarFile) {
+        body.set('avatar', payload.avatarFile);
+      }
+
+      const updated = await pb.collection(collections.users).update(this.userId, body);
+      this.user = updated as Record<string, unknown>;
+      this.token = pb.authStore.token;
     }
   }
 });

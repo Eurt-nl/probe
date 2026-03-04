@@ -20,6 +20,7 @@ export interface RemotePlayer {
   hidden_count: number;
   is_word_revealed: boolean;
   display_name: string;
+  avatar_url?: string;
   revealed_mask: Array<string | null>;
 }
 
@@ -47,6 +48,24 @@ export interface RemoteChatMessage {
   message_at: string;
 }
 
+export interface LobbyChatMessage {
+  id: string;
+  actor: string;
+  actor_name: string;
+  message: string;
+  message_at: string;
+}
+
+export interface LobbyPresenceEntry {
+  id: string;
+  player: string;
+  player_name: string;
+  avatar_url?: string;
+  location: 'lobby' | 'game';
+  game?: string;
+  last_seen: string;
+}
+
 export interface RemoteTurn {
   id: string;
   game: string;
@@ -60,6 +79,14 @@ export interface RemoteTurn {
 export interface RemoteTurnNotification {
   id: string;
   body: string;
+  sent_at?: string;
+}
+
+export interface RemoteSystemNotification {
+  id: string;
+  title: string;
+  body: string;
+  sent_at?: string;
 }
 
 export interface LobbyGameSummary {
@@ -89,7 +116,7 @@ function fakeHash(secret: string): string {
 function normalizeSecret(secret: string): string {
   const cleaned = secret.trim().toUpperCase();
   if (!cleaned.length) {
-    throw new Error('Vul een geheim woord in van 8 t/m 12 letters');
+    throw new Error('Vul een geheim woord in van 7 t/m 12 letters');
   }
   if (!/^[A-Z.]+$/.test(cleaned)) {
     throw new Error('Gebruik alleen letters (A-Z) en optioneel stippen (.)');
@@ -99,26 +126,36 @@ function normalizeSecret(secret: string): string {
   }
 
   const letterCount = cleaned.replace(/\./g, '').length;
-  if (letterCount < 8) {
-    throw new Error('Geheim woord te kort: minimaal 8 letters');
+  if (letterCount < 7) {
+    throw new Error('Geheim woord te kort: minimaal 7 letters');
   }
   if (letterCount > 12) {
     throw new Error('Geheim woord te lang: maximaal 12 letters');
   }
 
   const dotCount = cleaned.length - letterCount;
-  if (dotCount > 4) {
-    throw new Error('Je mag maximaal 4 stippen gebruiken');
+  if (dotCount > 5) {
+    throw new Error('Je mag maximaal 5 stippen gebruiken');
   }
   if (cleaned.length > 12) {
     throw new Error('Totaal (letters + stippen) mag maximaal 12 tekens zijn');
   }
 
-  // Probe gebruikt altijd 12 posities; ontbrekende posities vullen we met dots op.
+  // WordCourt gebruikt altijd 12 posities.
+  // Als speler geen dots opgeeft, verdelen we de auto-dots willekeurig voor/achter.
   const missing = 12 - cleaned.length;
-  if (dotCount + missing > 4) {
-    throw new Error('Met dit woord zou je meer dan 4 stippen nodig hebben');
+  if (dotCount + missing > 5) {
+    throw new Error('Met dit woord zou je meer dan 5 stippen nodig hebben');
   }
+
+  if (missing <= 0) return cleaned;
+
+  if (dotCount === 0) {
+    const leadingDots = Math.floor(Math.random() * (missing + 1));
+    const trailingDots = missing - leadingDots;
+    return `${'.'.repeat(leadingDots)}${cleaned}${'.'.repeat(trailingDots)}`;
+  }
+
   return `${cleaned}${'.'.repeat(missing)}`;
 }
 
@@ -177,6 +214,11 @@ export async function listRemotePlayers(gameId: string): Promise<RemotePlayer[]>
   });
 
   return records.map((record) => ({
+    // Build absolute file URL when avatar file is present on the expanded user.
+    // We expose it here so game cards can render real avatars.
+    avatar_url: record.expand?.player?.avatar
+      ? pb.files.getURL(record.expand.player as Record<string, unknown>, String(record.expand.player.avatar))
+      : undefined,
     id: record.id,
     game: String(record.game),
     player: String(record.player),
@@ -385,8 +427,8 @@ export async function submitRemoteGuess(remoteGameId: string, payload: {
   const normalizedChar = String(payload.guess_char ?? '').trim().toUpperCase().slice(0, 1);
   const normalizedWord = String(payload.guess_word ?? '').trim().toUpperCase();
   if (isInterruptive) {
-    if (!/^[A-Z]{8,12}$/.test(normalizedWord)) {
-      throw new Error('Supergok moet 8 t/m 12 letters bevatten (zonder stippen)');
+    if (!/^[A-Z]{7,12}$/.test(normalizedWord)) {
+      throw new Error('Supergok moet 7 t/m 12 letters bevatten (zonder stippen)');
     }
   } else if (!/^[A-Z.]$/.test(normalizedChar)) {
     throw new Error('Gebruik 1 teken: A-Z of .');
@@ -569,7 +611,74 @@ export async function getLatestTurnNotification(gameId: string): Promise<RemoteT
   if (!record) return null;
   return {
     id: String(record.id),
-    body: String(record.body ?? '')
+    body: String(record.body ?? ''),
+    sent_at: record.sent_at ? String(record.sent_at) : undefined
+  };
+}
+
+export async function listTurnStartNotifications(gameId: string): Promise<RemoteTurnNotification[]> {
+  let records = await pb.collection(collections.notifications)
+    .getFullList({
+      requestKey: null,
+      filter: pb.filter('game = {:gameId} && type = {:type}', { gameId, type: 'turn_start' }),
+      sort: '-sent_at,-id'
+    })
+    .catch(() => null);
+
+  if (!records) {
+    records = await pb.collection(collections.notifications)
+      .getFullList({
+        requestKey: null,
+        filter: pb.filter('game = {:gameId} && type = {:type}', { gameId, type: 'turn_start' }),
+        sort: '-id'
+      })
+      .catch(() => []);
+  }
+
+  return records.map((record) => ({
+    id: String(record.id),
+    body: String(record.body ?? ''),
+    sent_at: record.sent_at ? String(record.sent_at) : undefined
+  }));
+}
+
+export async function getLatestFinalPhaseNotification(gameId: string): Promise<RemoteSystemNotification | null> {
+  let record = await pb.collection(collections.notifications)
+    .getFirstListItem(
+      pb.filter('game = {:gameId} && type = {:type} && title = {:title}', {
+        gameId,
+        type: 'system',
+        title: 'Eindfase'
+      }),
+      {
+        requestKey: null,
+        sort: '-sent_at,-id'
+      }
+    )
+    .catch(() => null);
+
+  if (!record) {
+    record = await pb.collection(collections.notifications)
+      .getFirstListItem(
+        pb.filter('game = {:gameId} && type = {:type} && title = {:title}', {
+          gameId,
+          type: 'system',
+          title: 'Eindfase'
+        }),
+        {
+          requestKey: null,
+          sort: '-id'
+        }
+      )
+      .catch(() => null);
+  }
+
+  if (!record) return null;
+  return {
+    id: String(record.id),
+    title: String(record.title ?? ''),
+    body: String(record.body ?? ''),
+    sent_at: record.sent_at ? String(record.sent_at) : undefined
   };
 }
 
@@ -587,6 +696,95 @@ export async function sendRemoteChatMessage(gameId: string, actorUserId: string,
     actor: actorUserId,
     message: trimmed
   });
+}
+
+export async function listLobbyChatMessages(): Promise<LobbyChatMessage[]> {
+  const records = await pb.collection(collections.lobbyChatMessages).getFullList({
+    requestKey: null,
+    expand: 'actor',
+    sort: '-message_at,-id'
+  });
+
+  return records.map((record) => ({
+    id: String(record.id),
+    actor: String(record.actor),
+    actor_name: String(record.expand?.actor?.display_name ?? record.expand?.actor?.name ?? record.actor),
+    message: String(record.message ?? ''),
+    message_at: String(record.message_at ?? '')
+  }));
+}
+
+export async function sendLobbyChatMessage(actorUserId: string, message: string): Promise<void> {
+  const trimmed = message.trim();
+  if (!trimmed) {
+    throw new Error('Chatbericht is leeg');
+  }
+  if (trimmed.length > 500) {
+    throw new Error('Chatbericht is te lang (max 500 tekens)');
+  }
+
+  await pb.collection(collections.lobbyChatMessages).create({
+    actor: actorUserId,
+    message: trimmed
+  });
+}
+
+export async function listLobbyPresence(): Promise<LobbyPresenceEntry[]> {
+  const records = await pb.collection(collections.lobbyPresence).getFullList({
+    requestKey: null,
+    filter: pb.filter('location = {:location}', {
+      location: 'lobby'
+    }),
+    expand: 'player',
+    sort: '-last_seen,-id'
+  });
+
+  const cutoffTs = Date.now() - 90_000;
+
+  return records.map((record) => ({
+    id: String(record.id),
+    player: String(record.player),
+    player_name: String(record.expand?.player?.display_name ?? record.expand?.player?.name ?? record.player),
+    avatar_url: record.expand?.player?.avatar
+      ? pb.files.getURL(record.expand.player as Record<string, unknown>, String(record.expand.player.avatar))
+      : undefined,
+    location: String(record.location ?? 'lobby') as LobbyPresenceEntry['location'],
+    game: record.game ? String(record.game) : undefined,
+    last_seen: String(record.last_seen ?? record.updated ?? record.created ?? '')
+  }))
+    .filter((entry) => {
+      const ts = Date.parse(entry.last_seen);
+      if (!Number.isFinite(ts)) return true;
+      return ts >= cutoffTs;
+    });
+}
+
+export async function upsertLobbyPresence(playerUserId: string): Promise<void> {
+  const existing = await pb.collection(collections.lobbyPresence)
+    .getFirstListItem(pb.filter('player = {:player}', { player: playerUserId }), { requestKey: null })
+    .catch(() => null);
+
+  if (existing) {
+    await pb.collection(collections.lobbyPresence).update(existing.id, {
+      location: 'lobby',
+      game: null
+    });
+    return;
+  }
+
+  await pb.collection(collections.lobbyPresence).create({
+    player: playerUserId,
+    location: 'lobby',
+    game: null
+  });
+}
+
+export async function removeLobbyPresence(playerUserId: string): Promise<void> {
+  const existing = await pb.collection(collections.lobbyPresence)
+    .getFirstListItem(pb.filter('player = {:player}', { player: playerUserId }), { requestKey: null })
+    .catch(() => null);
+  if (!existing) return;
+  await pb.collection(collections.lobbyPresence).delete(existing.id);
 }
 
 export async function subscribeRemoteGame(gameId: string, onChange: () => void): Promise<() => void> {
@@ -617,6 +815,15 @@ export async function subscribeRemoteGame(gameId: string, onChange: () => void):
 
   await pb.collection(collections.notifications).subscribe('*', onChange, {
     filter: pb.filter('game = {:gameId} && type = {:type}', { gameId, type: 'turn_start' })
+  });
+  unsubs.push(() => pb.collection(collections.notifications).unsubscribe('*'));
+
+  await pb.collection(collections.notifications).subscribe('*', onChange, {
+    filter: pb.filter('game = {:gameId} && type = {:type} && title = {:title}', {
+      gameId,
+      type: 'system',
+      title: 'Eindfase'
+    })
   });
   unsubs.push(() => pb.collection(collections.notifications).unsubscribe('*'));
 
