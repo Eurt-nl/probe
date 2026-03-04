@@ -337,7 +337,7 @@ const isCurrentUserInGame = computed(() =>
 const canSendChat = computed(() =>
   Boolean(session.userId) &&
   isCurrentUserInGame.value &&
-  remoteGame.value?.status === 'active'
+  remoteGame.value?.status !== 'finished'
 );
 const displayPlayers = computed(() => {
   if (!session.userId) return remotePlayers.value;
